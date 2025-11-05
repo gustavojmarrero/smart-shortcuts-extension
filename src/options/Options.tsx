@@ -12,6 +12,7 @@ import {
   FolderPlus,
   Folder as FolderIcon,
 } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import {
   loadConfig,
   addSection,
@@ -26,6 +27,8 @@ import {
   exportConfig,
   importConfig,
   reorderSections,
+  reorderItems,
+  moveItem,
 } from '../storage/config';
 import type { ShortcutConfig, Section, Shortcut, Folder, Item } from '../storage/types';
 import { EditShortcutModal, EditSectionModal, EditFolderModal } from '../popup/components/EditModal';
@@ -293,10 +296,42 @@ export default function Options() {
                 <Trash2 className="w-4 h-4 text-text-secondary" />
               </button>
             </div>
-            {isExpanded && item.items.length > 0 && (
-              <div className="space-y-2">
-                {renderItems(item.items, sectionId, depth + 1, item.id)}
-              </div>
+            {isExpanded && (
+              <Droppable droppableId={`folder-${item.id}`}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`space-y-2 p-2 ${snapshot.isDraggingOver ? 'bg-primary/5 rounded' : ''}`}
+                    style={{ minHeight: '40px' }}
+                  >
+                    {item.items.length === 0 ? (
+                      <div className="text-center py-4 text-small text-text-secondary">
+                        Arrastra items aquí
+                      </div>
+                    ) : (
+                      item.items
+                        .sort((a, b) => a.order - b.order)
+                        .map((subItem, subIndex) => (
+                          <Draggable key={subItem.id} draggableId={subItem.id} index={subIndex}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={snapshot.isDragging ? 'opacity-50' : ''}
+                              >
+                                <div {...provided.dragHandleProps}>
+                                  {renderItems([subItem], sectionId, depth + 1, item.id)}
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))
+                    )}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
             )}
           </div>
         );
@@ -374,6 +409,100 @@ export default function Options() {
     }).filter(Boolean) as JSX.Element[];
   };
 
+  // Drag and drop handler (similar to App.tsx)
+  const handleDragEnd = async (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+
+    // Parse droppableIds using indexOf to handle UUIDs with hyphens
+    const sourceHyphenIndex = source.droppableId.indexOf('-');
+    const sourceType = source.droppableId.substring(0, sourceHyphenIndex);
+    const sourceId = source.droppableId.substring(sourceHyphenIndex + 1);
+
+    const destHyphenIndex = destination.droppableId.indexOf('-');
+    const destType = destination.droppableId.substring(0, destHyphenIndex);
+    const destId = destination.droppableId.substring(destHyphenIndex + 1);
+
+    // Find section IDs
+    const sourceSectionId = sourceType === 'section' ? sourceId : findSectionForFolder(sourceId);
+    const destSectionId = destType === 'section' ? destId : findSectionForFolder(destId);
+
+    if (!sourceSectionId || !destSectionId) return;
+
+    // Same container - reorder
+    if (source.droppableId === destination.droppableId) {
+      const section = config?.sections.find(s => s.id === sourceSectionId);
+      if (!section) return;
+
+      const containerItems = sourceType === 'section'
+        ? section.items
+        : findFolderItems(section.items, sourceId);
+
+      if (!containerItems) return;
+
+      const sortedItems = [...containerItems].sort((a, b) => a.order - b.order);
+      const reordered = Array.from(sortedItems);
+      const [removed] = reordered.splice(source.index, 1);
+      reordered.splice(destination.index, 0, removed);
+
+      await reorderItems(
+        sourceSectionId,
+        reordered.map(item => item.id),
+        sourceType === 'folder' ? sourceId : undefined
+      );
+    } else {
+      // Different containers - move item
+      await moveItem(
+        draggableId,
+        sourceSectionId,
+        destSectionId,
+        sourceType === 'folder' ? sourceId : undefined,
+        destType === 'folder' ? destId : undefined,
+        destination.index
+      );
+    }
+
+    // Reload config
+    const updated = await loadConfig();
+    setConfig(updated);
+  };
+
+  // Helper: find which section contains a folder
+  const findSectionForFolder = (folderId: string): string | null => {
+    if (!config) return null;
+    for (const section of config.sections) {
+      if (findFolderInItems(section.items, folderId)) {
+        return section.id;
+      }
+    }
+    return null;
+  };
+
+  // Helper: recursively find folder in items
+  const findFolderInItems = (items: Item[], folderId: string): boolean => {
+    for (const item of items) {
+      if (item.id === folderId) return true;
+      if (isFolder(item) && findFolderInItems(item.items, folderId)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Helper: find folder items by ID
+  const findFolderItems = (items: Item[], folderId: string): Item[] | null => {
+    for (const item of items) {
+      if (isFolder(item)) {
+        if (item.id === folderId) return item.items;
+        const found = findFolderItems(item.items, folderId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   if (!config) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -385,6 +514,7 @@ export default function Options() {
   const sortedSections = [...config.sections].sort((a, b) => a.order - b.order);
 
   return (
+    <DragDropContext onDragEnd={handleDragEnd}>
     <div className="min-h-screen bg-background-secondary">
       {/* Header */}
       <header className="bg-background border-b border-border sticky top-0 z-10">
@@ -513,17 +643,43 @@ export default function Options() {
 
                   {/* Items List (Folders and Shortcuts) */}
                   {isExpanded && (
-                    <div className="p-2">
-                      {section.items.length === 0 ? (
-                        <div className="text-center py-8 text-small text-text-secondary">
-                          No hay items. Haz clic en los botones + o 📁 para agregar.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {renderItems(section.items, section.id)}
+                    <Droppable droppableId={`section-${section.id}`}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`p-2 ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
+                          style={{ minHeight: '40px' }}
+                        >
+                          {section.items.length === 0 ? (
+                            <div className="text-center py-8 text-small text-text-secondary">
+                              No hay items. Haz clic en los botones + o 📁 para agregar.
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {section.items
+                                .sort((a, b) => a.order - b.order)
+                                .map((item, index) => (
+                                  <Draggable key={item.id} draggableId={item.id} index={index}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        className={snapshot.isDragging ? 'opacity-50' : ''}
+                                      >
+                                        <div {...provided.dragHandleProps}>
+                                          {renderItems([item], section.id)}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                            </div>
+                          )}
+                          {provided.placeholder}
                         </div>
                       )}
-                    </div>
+                    </Droppable>
                   )}
                 </div>
               );
@@ -557,5 +713,6 @@ export default function Options() {
         />
       )}
     </div>
+    </DragDropContext>
   );
 }
