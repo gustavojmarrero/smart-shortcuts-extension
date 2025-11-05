@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Settings, ChevronsDown, ChevronsUp, Plus } from 'lucide-react';
-import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import ShortcutSection from './components/ShortcutSection';
 
 // Debug: File loaded
@@ -21,6 +21,7 @@ import {
   deleteFolder,
   reorderItems,
   moveItem,
+  reorderSections,
 } from '../storage/config';
 import { filterSections } from '../utils/searchUtils';
 import type { ShortcutConfig, Section, Shortcut, Folder } from '../storage/types';
@@ -272,6 +273,19 @@ export default function App() {
       return;
     }
 
+    // Handle section reordering
+    if (source.droppableId === 'sections' && destination.droppableId === 'sections') {
+      console.log('📦 Reordering sections');
+      const reordered = Array.from(sortedSections);
+      const [removed] = reordered.splice(source.index, 1);
+      reordered.splice(destination.index, 0, removed);
+
+      await reorderSections(reordered.map(s => s.id));
+      const updated = await loadConfig();
+      setConfig(updated);
+      return;
+    }
+
     // Parse droppableIds: "section-{id}" or "folder-{id}"
     // Use indexOf and substring to handle IDs with hyphens
     const sourceHyphenIndex = source.droppableId.indexOf('-');
@@ -450,41 +464,62 @@ export default function App() {
             </button>
           </div>
         ) : (
-          displaySections.map((section) => (
-            <ShortcutSection
-              key={section.id}
-              section={section}
-              isExpanded={effectiveExpandedSections.has(section.id)}
-              onToggle={() => toggleSection(section.id)}
-              onEditShortcut={(shortcut) =>
-                setModal({ type: 'shortcut', sectionId: section.id, shortcut })
-              }
-              onDeleteShortcut={(shortcutId) =>
-                handleDeleteShortcut(section.id, shortcutId)
-              }
-              onAddShortcut={(parentFolderId) => handleAddShortcut(section.id, parentFolderId)}
-              onEditFolder={(folder) =>
-                setModal({ type: 'folder', sectionId: section.id, folder })
-              }
-              onDeleteFolder={(folderId) =>
-                handleDeleteFolder(section.id, folderId)
-              }
-              onAddFolder={(parentFolderId) => handleAddFolder(section.id, parentFolderId)}
-              onEditSection={() => setModal({ type: 'section', section })}
-              onDeleteSection={() => handleDeleteSection(section.id)}
-              onReorderItems={async (sectionId, itemIds, parentFolderId) => {
-                await reorderItems(sectionId, itemIds, parentFolderId);
-                const updated = await loadConfig();
-                setConfig(updated);
-              }}
-              onMoveItem={async (itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex) => {
-                await moveItem(itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex);
-                const updated = await loadConfig();
-                setConfig(updated);
-              }}
-              searchQuery={searchQuery}
-            />
-          ))
+          <Droppable droppableId="sections" type="SECTION">
+            {(provided, snapshot) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className={snapshot.isDraggingOver ? 'bg-primary/5' : ''}
+              >
+                {displaySections.map((section, index) => (
+                  <Draggable key={section.id} draggableId={section.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={snapshot.isDragging ? 'opacity-70 shadow-lg' : ''}
+                      >
+                        <ShortcutSection
+                          section={section}
+                          isExpanded={effectiveExpandedSections.has(section.id)}
+                          onToggle={() => toggleSection(section.id)}
+                          onEditShortcut={(shortcut) =>
+                            setModal({ type: 'shortcut', sectionId: section.id, shortcut })
+                          }
+                          onDeleteShortcut={(shortcutId) =>
+                            handleDeleteShortcut(section.id, shortcutId)
+                          }
+                          onAddShortcut={(parentFolderId) => handleAddShortcut(section.id, parentFolderId)}
+                          onEditFolder={(folder) =>
+                            setModal({ type: 'folder', sectionId: section.id, folder })
+                          }
+                          onDeleteFolder={(folderId) =>
+                            handleDeleteFolder(section.id, folderId)
+                          }
+                          onAddFolder={(parentFolderId) => handleAddFolder(section.id, parentFolderId)}
+                          onEditSection={() => setModal({ type: 'section', section })}
+                          onDeleteSection={() => handleDeleteSection(section.id)}
+                          onReorderItems={async (sectionId, itemIds, parentFolderId) => {
+                            await reorderItems(sectionId, itemIds, parentFolderId);
+                            const updated = await loadConfig();
+                            setConfig(updated);
+                          }}
+                          onMoveItem={async (itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex) => {
+                            await moveItem(itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex);
+                            const updated = await loadConfig();
+                            setConfig(updated);
+                          }}
+                          searchQuery={searchQuery}
+                          dragHandleProps={provided.dragHandleProps}
+                        />
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
         )}
       </div>
 

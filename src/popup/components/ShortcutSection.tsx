@@ -21,6 +21,7 @@ interface ShortcutSectionProps {
   onReorderItems?: (sectionId: string, itemIds: string[], parentFolderId?: string) => void;
   onMoveItem?: (itemId: string, sourceSectionId: string, targetSectionId: string, sourceFolderId?: string, targetFolderId?: string, newIndex?: number) => void;
   searchQuery?: string;
+  dragHandleProps?: any;
 }
 
 export default function ShortcutSection({
@@ -38,6 +39,7 @@ export default function ShortcutSection({
   onReorderItems,
   onMoveItem,
   searchQuery = '',
+  dragHandleProps,
 }: ShortcutSectionProps) {
   // Sort all items (shortcuts and folders)
   const sortedItems = [...section.items].sort((a, b) => a.order - b.order);
@@ -48,6 +50,17 @@ export default function ShortcutSection({
     <div className="border-b border-border last:border-b-0">
       {/* Section Header - Clickeable para toggle */}
       <div className="flex items-center justify-between bg-background-secondary">
+        {/* Drag Handle */}
+        {dragHandleProps && (
+          <div
+            {...dragHandleProps}
+            className="px-1 py-1.5 cursor-grab active:cursor-grabbing hover:bg-hover transition-smooth"
+            title="Arrastrar para reordenar"
+          >
+            <GripVertical className="w-3 h-3 text-text-secondary" />
+          </div>
+        )}
+
         <button
           onClick={onToggle}
           className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-hover transition-smooth text-left"

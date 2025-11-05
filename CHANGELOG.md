@@ -1,5 +1,16 @@
 # Changelog - Smart Shortcuts
 
+## v2.2.0 - Drag & Drop para Secciones (2025-11-05)
+
+### 🎉 Nuevas Características
+
+- ✅ **Drag & Drop de secciones**: Ahora puedes arrastrar y soltar secciones completas para reordenarlas
+- ✅ **Handle visual de arrastre**: Icono de grip visible en cada sección para facilitar el drag & drop
+- ✅ **Feedback visual mejorado**: Opacity y shadow al arrastrar secciones
+- ✅ **Integración completa**: Funciona en conjunto con el drag & drop de items y carpetas
+
+---
+
 ## v2.1.1 - Bug Fixes (2025-11-05)
 
 ### 🐛 Bugs Corregidos
