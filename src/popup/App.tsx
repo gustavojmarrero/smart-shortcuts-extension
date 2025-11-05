@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, ChevronsDown, ChevronsUp } from 'lucide-react';
+import { Settings, ChevronsDown, ChevronsUp, Plus } from 'lucide-react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import ShortcutSection from './components/ShortcutSection';
 
@@ -395,7 +395,7 @@ export default function App() {
         console.log('🎯 Drag started:', result.draggableId);
       }}
     >
-      <div className="w-[380px] h-[600px] flex flex-col bg-background">
+      <div className="w-[380px] h-[600px] flex flex-col bg-background relative">
       {/* Header */}
       <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border bg-background">
         <h1 className="text-[15px] font-semibold text-text-primary">
@@ -487,6 +487,17 @@ export default function App() {
           ))
         )}
       </div>
+
+      {/* Floating Add Section Button */}
+      {sortedSections.length > 0 && (
+        <button
+          onClick={handleCreateSection}
+          className="absolute bottom-4 right-4 p-3 bg-primary text-white rounded-full shadow-lg hover:bg-primary-hover transition-smooth flex items-center justify-center"
+          title="Nueva Sección"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Modals */}
       {modal.type === 'section' && (
