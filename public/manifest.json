@@ -2,7 +2,9 @@
   "manifest_version": 3,
   "name": "Smart Shortcuts",
   "version": "2.1.0",
-  "description": "Accesos directos inteligentes más rápidos que favoritos",
+  "description": "Organiza y accede rápidamente a tus páginas web favoritas. Soporta enlaces dinámicos, carpetas anidadas y sincronización automática.",
+  "author": "Gustavo Marrero",
+  "homepage_url": "https://github.com/gustavojmarrero/smart-shortcuts-extension",
   "permissions": [
     "storage",
     "tabs"
