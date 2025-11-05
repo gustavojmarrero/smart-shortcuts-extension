@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Settings, ChevronsDown, ChevronsUp } from 'lucide-react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import ShortcutSection from './components/ShortcutSection';
+
+// Debug: File loaded
+console.log('📦 App.tsx loaded');
 import EmptyState from './components/EmptyState';
 import SearchBar from './components/SearchBar';
 import { EditShortcutModal, EditSectionModal, EditFolderModal } from './components/EditModal';
@@ -47,9 +50,22 @@ export default function App() {
     return new Set();
   });
 
+  // Debug: Log when component mounts
+  useEffect(() => {
+    console.log('='.repeat(50));
+    console.log('🚀 Smart Shortcuts App Mounted');
+    console.log('DragDropContext is active');
+    console.log('='.repeat(50));
+
+    // Test alert to verify code is running
+    // alert('App mounted - if you see this, the component is working');
+  }, []);
+
   // Load config on mount
   useEffect(() => {
+    console.log('📥 Loading config...');
     loadConfig().then((cfg) => {
+      console.log('✅ Config loaded:', cfg);
       setConfig(cfg);
       // Si no hay secciones expandidas guardadas, expandir la primera
       if (cfg.sections.length > 0 && expandedSections.size === 0) {
@@ -257,8 +273,14 @@ export default function App() {
     }
 
     // Parse droppableIds: "section-{id}" or "folder-{id}"
-    const [sourceType, sourceId] = source.droppableId.split('-');
-    const [destType, destId] = destination.droppableId.split('-');
+    // Use indexOf and substring to handle IDs with hyphens
+    const sourceHyphenIndex = source.droppableId.indexOf('-');
+    const sourceType = source.droppableId.substring(0, sourceHyphenIndex);
+    const sourceId = source.droppableId.substring(sourceHyphenIndex + 1);
+
+    const destHyphenIndex = destination.droppableId.indexOf('-');
+    const destType = destination.droppableId.substring(0, destHyphenIndex);
+    const destId = destination.droppableId.substring(destHyphenIndex + 1);
 
     console.log('📍 Parsed IDs:', {
       sourceType,
@@ -367,7 +389,12 @@ export default function App() {
   };
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext
+      onDragEnd={handleDragEnd}
+      onDragStart={(result) => {
+        console.log('🎯 Drag started:', result.draggableId);
+      }}
+    >
       <div className="w-[380px] h-[600px] flex flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border bg-background">
