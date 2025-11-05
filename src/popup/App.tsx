@@ -3,7 +3,7 @@ import { Settings, ChevronsDown, ChevronsUp } from 'lucide-react';
 import ShortcutSection from './components/ShortcutSection';
 import EmptyState from './components/EmptyState';
 import SearchBar from './components/SearchBar';
-import { EditShortcutModal, EditSectionModal } from './components/EditModal';
+import { EditShortcutModal, EditSectionModal, EditFolderModal } from './components/EditModal';
 import {
   loadConfig,
   addSection,
@@ -12,14 +12,18 @@ import {
   addShortcut,
   updateShortcut,
   deleteShortcut,
+  addFolder,
+  updateFolder,
+  deleteFolder,
 } from '../storage/config';
 import { filterSections } from '../utils/searchUtils';
-import type { ShortcutConfig, Section, Shortcut } from '../storage/types';
+import type { ShortcutConfig, Section, Shortcut, Folder } from '../storage/types';
 
 type ModalState =
   | { type: 'none' }
   | { type: 'section'; section?: Section }
-  | { type: 'shortcut'; sectionId: string; shortcut?: Shortcut };
+  | { type: 'shortcut'; sectionId: string; shortcut?: Shortcut }
+  | { type: 'folder'; sectionId: string; folder?: Folder };
 
 const STORAGE_KEY = 'expandedSections';
 
@@ -136,6 +140,35 @@ export default function App() {
   const handleDeleteShortcut = async (sectionId: string, shortcutId: string) => {
     if (confirm('¿Seguro que quieres eliminar este shortcut?')) {
       await deleteShortcut(sectionId, shortcutId);
+      const updated = await loadConfig();
+      setConfig(updated);
+    }
+  };
+
+  const handleAddFolder = (sectionId: string) => {
+    setModal({ type: 'folder', sectionId });
+  };
+
+  const handleSaveFolder = async (data: Partial<Folder>) => {
+    if (modal.type === 'folder') {
+      if (modal.folder) {
+        await updateFolder(modal.sectionId, modal.folder.id, data);
+      } else {
+        await addFolder(modal.sectionId, {
+          name: data.name!,
+          icon: data.icon,
+          items: [],
+        });
+      }
+      const updated = await loadConfig();
+      setConfig(updated);
+      setModal({ type: 'none' });
+    }
+  };
+
+  const handleDeleteFolder = async (sectionId: string, folderId: string) => {
+    if (confirm('¿Seguro que quieres eliminar esta carpeta y todo su contenido?')) {
+      await deleteFolder(sectionId, folderId);
       const updated = await loadConfig();
       setConfig(updated);
     }
@@ -260,6 +293,13 @@ export default function App() {
                 handleDeleteShortcut(section.id, shortcutId)
               }
               onAddShortcut={() => handleAddShortcut(section.id)}
+              onEditFolder={(folder) =>
+                setModal({ type: 'folder', sectionId: section.id, folder })
+              }
+              onDeleteFolder={(folderId) =>
+                handleDeleteFolder(section.id, folderId)
+              }
+              onAddFolder={() => handleAddFolder(section.id)}
               onEditSection={() => setModal({ type: 'section', section })}
               onDeleteSection={() => handleDeleteSection(section.id)}
               searchQuery={searchQuery}
@@ -281,6 +321,14 @@ export default function App() {
           sectionId={modal.sectionId}
           shortcut={modal.shortcut}
           onSave={handleSaveShortcut}
+          onClose={() => setModal({ type: 'none' })}
+        />
+      )}
+      {modal.type === 'folder' && (
+        <EditFolderModal
+          sectionId={modal.sectionId}
+          folder={modal.folder}
+          onSave={handleSaveFolder}
           onClose={() => setModal({ type: 'none' })}
         />
       )}

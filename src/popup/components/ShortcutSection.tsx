@@ -1,8 +1,9 @@
-import { Plus, Settings, Trash2, ChevronDown } from 'lucide-react';
+import { Plus, Settings, Trash2, ChevronDown, FolderPlus } from 'lucide-react';
 import DirectLink from './DirectLink';
 import DynamicInput from './DynamicInput';
-import type { Section, Shortcut } from '../../storage/types';
-import { isShortcut } from '../../storage/types';
+import FolderItem from './FolderItem';
+import type { Section, Shortcut, Folder } from '../../storage/types';
+import { isShortcut, isFolder } from '../../storage/types';
 
 interface ShortcutSectionProps {
   section: Section;
@@ -11,6 +12,9 @@ interface ShortcutSectionProps {
   onEditShortcut: (shortcut: Shortcut) => void;
   onDeleteShortcut: (shortcutId: string) => void;
   onAddShortcut: () => void;
+  onEditFolder: (folder: Folder) => void;
+  onDeleteFolder: (folderId: string) => void;
+  onAddFolder: () => void;
   onEditSection: () => void;
   onDeleteSection: () => void;
   searchQuery?: string;
@@ -23,14 +27,17 @@ export default function ShortcutSection({
   onEditShortcut,
   onDeleteShortcut,
   onAddShortcut,
+  onEditFolder,
+  onDeleteFolder,
+  onAddFolder,
   onEditSection,
   onDeleteSection,
   searchQuery = '',
 }: ShortcutSectionProps) {
-  // Filter and sort items - for now, only show shortcuts (folders will be implemented later)
-  const sortedShortcuts = [...section.items]
-    .filter(isShortcut)
-    .sort((a, b) => a.order - b.order);
+  // Sort all items (shortcuts and folders)
+  const sortedItems = [...section.items].sort((a, b) => a.order - b.order);
+  const shortcutCount = section.items.filter(isShortcut).length;
+  const folderCount = section.items.filter(isFolder).length;
 
   return (
     <div className="border-b border-border last:border-b-0">
@@ -52,12 +59,22 @@ export default function ShortcutSection({
           </h3>
           {/* Badge con contador */}
           <span className="text-[10px] text-text-secondary">
-            ({sortedShortcuts.length})
+            ({shortcutCount} shortcuts{folderCount > 0 ? `, ${folderCount} folders` : ''})
           </span>
         </button>
 
         {/* Action buttons */}
         <div className="flex items-center gap-0.5 px-1.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddFolder();
+            }}
+            className="p-1 hover:bg-hover rounded transition-smooth"
+            title="Agregar carpeta"
+          >
+            <FolderPlus className="w-3 h-3 text-text-secondary" />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -98,30 +115,62 @@ export default function ShortcutSection({
         }`}
       >
         <div className="px-2 py-1.5 space-y-0.5">
-          {sortedShortcuts.length === 0 ? (
+          {sortedItems.length === 0 ? (
             <div className="text-center py-3 text-[11px] text-text-secondary">
-              No hay shortcuts. Haz clic en + para agregar uno.
+              No hay items. Haz clic en + para agregar shortcuts o carpetas.
             </div>
           ) : (
-            sortedShortcuts.map((shortcut) => (
-              <div key={shortcut.id}>
-                {shortcut.type === 'direct' ? (
-                  <DirectLink
-                    shortcut={shortcut}
-                    onEdit={() => onEditShortcut(shortcut)}
-                    onDelete={() => onDeleteShortcut(shortcut.id)}
+            sortedItems.map((item) => {
+              if (isFolder(item)) {
+                return (
+                  <FolderItem
+                    key={item.id}
+                    folder={item}
+                    depth={0}
                     searchQuery={searchQuery}
+                    onEditItem={(editItem) => {
+                      if (isFolder(editItem)) {
+                        onEditFolder(editItem);
+                      } else {
+                        onEditShortcut(editItem);
+                      }
+                    }}
+                    onDeleteItem={(itemId) => {
+                      // Check if item is a folder or shortcut
+                      const itemToDelete = section.items.find(i => i.id === itemId);
+                      if (itemToDelete && isFolder(itemToDelete)) {
+                        onDeleteFolder(itemId);
+                      } else {
+                        onDeleteShortcut(itemId);
+                      }
+                    }}
+                    onAddFolder={() => onAddFolder()}
+                    onAddShortcut={() => onAddShortcut()}
                   />
-                ) : (
-                  <DynamicInput
-                    shortcut={shortcut}
-                    onEdit={() => onEditShortcut(shortcut)}
-                    onDelete={() => onDeleteShortcut(shortcut.id)}
-                    searchQuery={searchQuery}
-                  />
-                )}
-              </div>
-            ))
+                );
+              } else if (isShortcut(item)) {
+                return (
+                  <div key={item.id}>
+                    {item.type === 'direct' ? (
+                      <DirectLink
+                        shortcut={item}
+                        onEdit={() => onEditShortcut(item)}
+                        onDelete={() => onDeleteShortcut(item.id)}
+                        searchQuery={searchQuery}
+                      />
+                    ) : (
+                      <DynamicInput
+                        shortcut={item}
+                        onEdit={() => onEditShortcut(item)}
+                        onDelete={() => onDeleteShortcut(item.id)}
+                        searchQuery={searchQuery}
+                      />
+                    )}
+                  </div>
+                );
+              }
+              return null;
+            })
           )}
         </div>
       </div>

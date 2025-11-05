@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import type { Shortcut, Section } from '../../storage/types';
+import type { Shortcut, Section, Folder } from '../../storage/types';
 
 interface EditShortcutModalProps {
   shortcut?: Shortcut;
@@ -283,6 +283,86 @@ export function EditSectionModal({ section, onSave, onClose }: EditSectionModalP
               className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-smooth text-small"
             >
               {section ? 'Guardar' : 'Crear'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+interface EditFolderModalProps {
+  folder?: Folder;
+  sectionId: string;
+  onSave: (data: Partial<Folder>) => void;
+  onClose: () => void;
+}
+
+export function EditFolderModal({ folder, onSave, onClose }: EditFolderModalProps) {
+  const [name, setName] = useState(folder?.name || '');
+  const [icon, setIcon] = useState(folder?.icon || '');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      name,
+      icon: icon || undefined,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-background rounded-lg shadow-lg w-[340px]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="text-title font-medium">
+            {folder ? 'Editar Carpeta' : 'Nueva Carpeta'}
+          </h3>
+          <button onClick={onClose} className="p-1 hover:bg-hover rounded transition-smooth">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-3">
+          <div>
+            <label className="block text-small font-medium text-text-primary mb-1">
+              Nombre *
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-3 py-2 text-small border border-border rounded-md focus:outline-none focus:border-primary"
+              placeholder="Ej: Documentos"
+            />
+          </div>
+
+          <div>
+            <label className="block text-small font-medium text-text-primary mb-1">
+              Icono (emoji)
+            </label>
+            <input
+              type="text"
+              value={icon}
+              onChange={(e) => setIcon(e.target.value)}
+              className="w-full px-3 py-2 text-small border border-border rounded-md focus:outline-none focus:border-primary"
+              placeholder="📁"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-hover transition-smooth text-small"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-smooth text-small"
+            >
+              {folder ? 'Guardar' : 'Crear'}
             </button>
           </div>
         </form>
