@@ -18,6 +18,8 @@ export function EditShortcutModal({ shortcut, onSave, onClose }: EditShortcutMod
   const [icon, setIcon] = useState(shortcut?.icon || '');
   const [description, setDescription] = useState(shortcut?.description || '');
   const [inputType, setInputType] = useState<'text' | 'number'>(shortcut?.inputType || 'text');
+  const [validationRegex, setValidationRegex] = useState(shortcut?.validationRegex || '');
+  const [validationMessage, setValidationMessage] = useState(shortcut?.validationMessage || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +36,8 @@ export function EditShortcutModal({ shortcut, onSave, onClose }: EditShortcutMod
       data.urlTemplate = urlTemplate;
       data.placeholder = placeholder;
       data.inputType = inputType;
+      data.validationRegex = validationRegex || undefined;
+      data.validationMessage = validationMessage || undefined;
     }
 
     onSave(data);
@@ -186,6 +190,82 @@ export function EditShortcutModal({ shortcut, onSave, onClose }: EditShortcutMod
                   <option value="text">Texto</option>
                   <option value="number">Número</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-small font-medium text-text-primary mb-1">
+                  Validación (Regex)
+                </label>
+                <input
+                  type="text"
+                  value={validationRegex}
+                  onChange={(e) => setValidationRegex(e.target.value)}
+                  className="w-full px-3 py-2 text-small border border-border rounded-md focus:outline-none focus:border-primary font-mono"
+                  placeholder="^\d{3}-\d{7}-\d{7}$"
+                />
+                <details className="mt-1">
+                  <summary className="text-small text-text-secondary cursor-pointer hover:text-primary">
+                    Ver ejemplos comunes
+                  </summary>
+                  <div className="mt-2 space-y-1 text-small bg-background-secondary p-2 rounded border border-border">
+                    <div className="flex justify-between items-center">
+                      <span className="text-text-secondary">Solo números:</span>
+                      <button
+                        type="button"
+                        onClick={() => setValidationRegex('^\\d+$')}
+                        className="text-primary hover:underline font-mono text-[10px]"
+                      >
+                        ^\d+$
+                      </button>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-text-secondary">Email:</span>
+                      <button
+                        type="button"
+                        onClick={() => setValidationRegex('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')}
+                        className="text-primary hover:underline font-mono text-[10px]"
+                      >
+                        ^[^\s@]+@...
+                      </button>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-text-secondary">Orden Amazon:</span>
+                      <button
+                        type="button"
+                        onClick={() => setValidationRegex('^\\d{3}-\\d{7}-\\d{7}$')}
+                        className="text-primary hover:underline font-mono text-[10px]"
+                      >
+                        ^\d{'{3}'}-\d{'{7}'}-\d{'{7}'}$
+                      </button>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-text-secondary">Código alfanumérico:</span>
+                      <button
+                        type="button"
+                        onClick={() => setValidationRegex('^[A-Z0-9]+$')}
+                        className="text-primary hover:underline font-mono text-[10px]"
+                      >
+                        ^[A-Z0-9]+$
+                      </button>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <div>
+                <label className="block text-small font-medium text-text-primary mb-1">
+                  Mensaje de Error
+                </label>
+                <input
+                  type="text"
+                  value={validationMessage}
+                  onChange={(e) => setValidationMessage(e.target.value)}
+                  className="w-full px-3 py-2 text-small border border-border rounded-md focus:outline-none focus:border-primary"
+                  placeholder="Formato inválido"
+                />
+                <p className="text-small text-text-secondary mt-1">
+                  Mensaje a mostrar si la validación falla
+                </p>
               </div>
             </>
           )}

@@ -48,6 +48,8 @@ export interface Shortcut {
   urlTemplate?: string; // e.g., "https://amazon.com/orders/{input}"
   placeholder?: string; // Input placeholder text
   inputType?: 'text' | 'number';
+  validationRegex?: string; // Regex pattern for input validation
+  validationMessage?: string; // Custom error message if validation fails
 
   // Metadata
   icon?: string;

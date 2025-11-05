@@ -14,13 +14,46 @@ interface DynamicInputProps {
 export default function DynamicInput({ shortcut, onEdit, onDelete, searchQuery = '' }: DynamicInputProps) {
   const [inputValue, setInputValue] = useState('');
   const [isHovered, setIsHovered] = useState(false);
+  const [validationError, setValidationError] = useState('');
+
+  const validateInput = (value: string): boolean => {
+    if (!shortcut.validationRegex) return true;
+
+    try {
+      const regex = new RegExp(shortcut.validationRegex);
+      return regex.test(value);
+    } catch (error) {
+      console.error('Invalid regex pattern:', error);
+      return true; // If regex is invalid, don't block the user
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+
+    // Clear error when user starts typing
+    if (validationError && value.length > 0) {
+      setValidationError('');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim() && shortcut.urlTemplate) {
+    if (!inputValue.trim()) return;
+
+    // Validate input
+    if (!validateInput(inputValue)) {
+      setValidationError(
+        shortcut.validationMessage || 'El formato del input no es válido'
+      );
+      return;
+    }
+
+    if (shortcut.urlTemplate) {
       const url = buildUrl(shortcut.urlTemplate, inputValue);
       openUrl(url);
       setInputValue(''); // Clear input after opening
+      setValidationError(''); // Clear any errors
     }
   };
 
@@ -47,21 +80,32 @@ export default function DynamicInput({ shortcut, onEdit, onDelete, searchQuery =
           </div>
         </div>
 
-        <div className="flex gap-1.5">
-          <input
-            type={shortcut.inputType || 'text'}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder={shortcut.placeholder || 'Ingresa valor...'}
-            className="flex-1 px-2 py-0.5 text-[11px] border border-border rounded-md focus:outline-none focus:border-primary transition-smooth"
-          />
-          <button
-            type="submit"
-            disabled={!inputValue.trim()}
-            className="px-2 py-0.5 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-smooth flex items-center"
-          >
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-1.5">
+            <input
+              type={shortcut.inputType || 'text'}
+              value={inputValue}
+              onChange={(e) => handleInputChange(e.target.value)}
+              placeholder={shortcut.placeholder || 'Ingresa valor...'}
+              className={`flex-1 px-2 py-0.5 text-[11px] border rounded-md focus:outline-none transition-smooth ${
+                validationError
+                  ? 'border-red-500 focus:border-red-600'
+                  : 'border-border focus:border-primary'
+              }`}
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className="px-2 py-0.5 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-smooth flex items-center"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {validationError && (
+            <div className="text-[10px] text-red-600 px-2">
+              {validationError}
+            </div>
+          )}
         </div>
       </form>
 
