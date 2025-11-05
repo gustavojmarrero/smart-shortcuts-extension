@@ -1,5 +1,14 @@
 # Changelog - Smart Shortcuts
 
+## v2.1.1 - Bug Fixes (2025-11-05)
+
+### 🐛 Bugs Corregidos
+
+- ✅ **Crear shortcuts dentro de carpetas**: Corregido bug donde al crear un shortcut o carpeta dentro de otra carpeta, se agregaba a la raíz de la sección
+- ✅ **Propagación de parentFolderId**: Las funciones onAddShortcut y onAddFolder ahora pasan correctamente el parentFolderId a través de todos los componentes
+
+---
+
 ## v2.1.0 - Nested Folders + Drag & Drop (2025-11-05)
 
 ### 🎉 Nuevas Características Principales
