@@ -90,11 +90,12 @@ export async function deleteSection(sectionId: string): Promise<void> {
 }
 
 /**
- * Add a shortcut to a section
+ * Add a shortcut to a section or inside a folder
  */
 export async function addShortcut(
   sectionId: string,
-  shortcut: Omit<Shortcut, 'id' | 'order'>
+  shortcut: Omit<Shortcut, 'id' | 'order'>,
+  parentFolderId?: string
 ): Promise<Shortcut> {
   const config = await loadConfig();
   const section = config.sections.find(s => s.id === sectionId);
@@ -103,9 +104,21 @@ export async function addShortcut(
   const newShortcut: Shortcut = {
     ...shortcut,
     id: crypto.randomUUID(),
-    order: section.items.length,
+    order: 0,
   };
-  section.items.push(newShortcut);
+
+  // If parentFolderId is provided, add to that folder
+  if (parentFolderId) {
+    const parentFolder = findFolderById(section.items, parentFolderId);
+    if (!parentFolder) throw new Error('Parent folder not found');
+    newShortcut.order = parentFolder.items.length;
+    parentFolder.items.push(newShortcut);
+  } else {
+    // Add to section root
+    newShortcut.order = section.items.length;
+    section.items.push(newShortcut);
+  }
+
   await saveConfig(config);
   return newShortcut;
 }
@@ -189,11 +202,28 @@ export async function reorderShortcuts(sectionId: string, itemIds: string[]): Pr
 }
 
 /**
- * Add a folder to a section
+ * Helper function to find a folder by ID recursively
+ */
+function findFolderById(items: (Shortcut | Folder)[], folderId: string): Folder | null {
+  for (const item of items) {
+    if ('items' in item && item.id === folderId) {
+      return item;
+    }
+    if ('items' in item) {
+      const found = findFolderById(item.items, folderId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Add a folder to a section or inside another folder
  */
 export async function addFolder(
   sectionId: string,
-  folder: Omit<Folder, 'id' | 'order' | 'isFolder'>
+  folder: Omit<Folder, 'id' | 'order' | 'isFolder'>,
+  parentFolderId?: string
 ): Promise<Folder> {
   const config = await loadConfig();
   const section = config.sections.find(s => s.id === sectionId);
@@ -202,11 +232,23 @@ export async function addFolder(
   const newFolder: Folder = {
     ...folder,
     id: crypto.randomUUID(),
-    order: section.items.length,
+    order: 0,
     isFolder: true,
     items: folder.items || [],
   };
-  section.items.push(newFolder);
+
+  // If parentFolderId is provided, add to that folder
+  if (parentFolderId) {
+    const parentFolder = findFolderById(section.items, parentFolderId);
+    if (!parentFolder) throw new Error('Parent folder not found');
+    newFolder.order = parentFolder.items.length;
+    parentFolder.items.push(newFolder);
+  } else {
+    // Add to section root
+    newFolder.order = section.items.length;
+    section.items.push(newFolder);
+  }
+
   await saveConfig(config);
   return newFolder;
 }

@@ -8,16 +8,18 @@ import { isFolder, isShortcut } from '../../storage/types';
 interface FolderItemProps {
   folder: Folder;
   depth: number;
+  sectionId: string;
   searchQuery?: string;
   onEditItem: (item: Item) => void;
   onDeleteItem: (itemId: string) => void;
-  onAddFolder: (parentFolderId: string) => void;
-  onAddShortcut: (parentFolderId: string) => void;
+  onAddFolder: (sectionId: string, parentFolderId?: string) => void;
+  onAddShortcut: (sectionId: string, parentFolderId?: string) => void;
 }
 
 export default function FolderItem({
   folder,
   depth,
+  sectionId,
   searchQuery = '',
   onEditItem,
   onDeleteItem,
@@ -67,10 +69,20 @@ export default function FolderItem({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onAddFolder(folder.id);
+                onAddFolder(sectionId, folder.id);
               }}
               className="p-1 hover:bg-hover rounded transition-smooth"
               title="Agregar carpeta"
+            >
+              <FolderIcon className="w-3 h-3 text-text-secondary" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddShortcut(sectionId, folder.id);
+              }}
+              className="p-1 hover:bg-hover rounded transition-smooth"
+              title="Agregar shortcut"
             >
               <Plus className="w-3 h-3 text-text-secondary" />
             </button>
@@ -114,6 +126,7 @@ export default function FolderItem({
                     key={item.id}
                     folder={item}
                     depth={depth + 1}
+                    sectionId={sectionId}
                     searchQuery={searchQuery}
                     onEditItem={onEditItem}
                     onDeleteItem={onDeleteItem}

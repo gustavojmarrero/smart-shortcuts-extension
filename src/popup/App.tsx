@@ -22,8 +22,8 @@ import type { ShortcutConfig, Section, Shortcut, Folder } from '../storage/types
 type ModalState =
   | { type: 'none' }
   | { type: 'section'; section?: Section }
-  | { type: 'shortcut'; sectionId: string; shortcut?: Shortcut }
-  | { type: 'folder'; sectionId: string; folder?: Folder };
+  | { type: 'shortcut'; sectionId: string; shortcut?: Shortcut; parentFolderId?: string }
+  | { type: 'folder'; sectionId: string; folder?: Folder; parentFolderId?: string };
 
 const STORAGE_KEY = 'expandedSections';
 
@@ -111,8 +111,8 @@ export default function App() {
     }
   };
 
-  const handleAddShortcut = (sectionId: string) => {
-    setModal({ type: 'shortcut', sectionId });
+  const handleAddShortcut = (sectionId: string, parentFolderId?: string) => {
+    setModal({ type: 'shortcut', sectionId, parentFolderId });
   };
 
   const handleSaveShortcut = async (data: Partial<Shortcut>) => {
@@ -129,7 +129,9 @@ export default function App() {
           icon: data.icon,
           description: data.description,
           inputType: data.inputType,
-        });
+          validationRegex: data.validationRegex,
+          validationMessage: data.validationMessage,
+        }, modal.parentFolderId);
       }
       const updated = await loadConfig();
       setConfig(updated);
@@ -145,8 +147,8 @@ export default function App() {
     }
   };
 
-  const handleAddFolder = (sectionId: string) => {
-    setModal({ type: 'folder', sectionId });
+  const handleAddFolder = (sectionId: string, parentFolderId?: string) => {
+    setModal({ type: 'folder', sectionId, parentFolderId });
   };
 
   const handleSaveFolder = async (data: Partial<Folder>) => {
@@ -158,7 +160,7 @@ export default function App() {
           name: data.name!,
           icon: data.icon,
           items: [],
-        });
+        }, modal.parentFolderId);
       }
       const updated = await loadConfig();
       setConfig(updated);

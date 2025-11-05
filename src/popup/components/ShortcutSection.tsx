@@ -127,6 +127,7 @@ export default function ShortcutSection({
                     key={item.id}
                     folder={item}
                     depth={0}
+                    sectionId={section.id}
                     searchQuery={searchQuery}
                     onEditItem={(editItem) => {
                       if (isFolder(editItem)) {
@@ -144,8 +145,8 @@ export default function ShortcutSection({
                         onDeleteShortcut(itemId);
                       }
                     }}
-                    onAddFolder={() => onAddFolder()}
-                    onAddShortcut={() => onAddShortcut()}
+                    onAddFolder={onAddFolder}
+                    onAddShortcut={onAddShortcut}
                   />
                 );
               } else if (isShortcut(item)) {
