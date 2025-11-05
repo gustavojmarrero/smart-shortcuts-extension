@@ -10,8 +10,20 @@ const BACKUP_KEY = 'shortcuts_backup';
  */
 export async function loadConfig(): Promise<ShortcutConfig> {
   try {
+    // Check sync storage quota
+    const bytesInUse = await chrome.storage.sync.getBytesInUse([STORAGE_KEY]);
+    console.log(`🔍 [SYNC] Storage in use: ${bytesInUse} bytes (max: 102,400 bytes)`);
+
     const result = await chrome.storage.sync.get([STORAGE_KEY]) as StorageData;
     let config: ShortcutConfig = result.config || DEFAULT_CONFIG;
+
+    // Log what we found
+    if (result.config) {
+      console.log('✅ [SYNC] Config loaded from sync storage');
+      console.log(`📊 [SYNC] Sections: ${result.config.sections.length}, Last modified: ${new Date(result.config.lastModified).toLocaleString()}`);
+    } else {
+      console.log('⚠️ [SYNC] No config found in sync storage');
+    }
 
     // If no config in sync storage, try to recover from localStorage backup
     if (!result.config) {
@@ -57,7 +69,17 @@ export async function saveConfig(config: ShortcutConfig): Promise<void> {
       ...config,
       lastModified: Date.now(),
     };
+
+    // Calculate size before saving
+    const configSize = JSON.stringify(updatedConfig).length;
+    console.log(`💾 [SYNC] Saving config (${configSize} bytes)...`);
+
     await chrome.storage.sync.set({ [STORAGE_KEY]: updatedConfig });
+
+    // Verify it was saved
+    const bytesInUse = await chrome.storage.sync.getBytesInUse([STORAGE_KEY]);
+    console.log(`✅ [SYNC] Config saved successfully! Storage in use: ${bytesInUse} bytes`);
+    console.log(`📊 [SYNC] Sections: ${updatedConfig.sections.length}, Last modified: ${new Date(updatedConfig.lastModified).toLocaleString()}`);
 
     // Also save a backup to localStorage for recovery
     try {
@@ -67,7 +89,12 @@ export async function saveConfig(config: ShortcutConfig): Promise<void> {
       console.warn('Could not save backup to localStorage:', e);
     }
   } catch (error) {
-    console.error('Error saving config:', error);
+    console.error('❌ [SYNC] Error saving config:', error);
+    if (error instanceof Error) {
+      if (error.message.includes('QUOTA_BYTES')) {
+        console.error('❌ [SYNC] QUOTA EXCEEDED! Storage limit reached.');
+      }
+    }
     throw error;
   }
 }

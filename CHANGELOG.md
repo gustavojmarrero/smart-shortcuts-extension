@@ -1,5 +1,16 @@
 # Changelog - Smart Shortcuts
 
+## v2.2.1 - Debug de Sincronización (2025-11-05)
+
+### 🔧 Mejoras
+- ✅ **Logging detallado de sincronización**: Agregado logging extensivo para diagnosticar problemas de sync
+- ✅ **Monitor de cuota de storage**: Muestra uso actual vs límite de 102KB
+- ✅ **Detección de cambios remotos**: Listener que detecta y muestra cambios desde otros dispositivos
+- ✅ **Auto-reload en cambios**: La extensión se recarga automáticamente cuando detecta cambios de otros dispositivos
+- ✅ **Detección de cuota excedida**: Alerta cuando se alcanza el límite de storage
+
+---
+
 ## v2.2.0 - Drag & Drop para Secciones (2025-11-05)
 
 ### 🎉 Nuevas Características

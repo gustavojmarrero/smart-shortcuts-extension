@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Smart Shortcuts",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Organiza y accede rápidamente a tus páginas web favoritas. Soporta enlaces dinámicos, carpetas anidadas y sincronización automática.",
   "author": "Gustavo Marrero",
   "homepage_url": "https://github.com/gustavojmarrero/smart-shortcuts-extension",
