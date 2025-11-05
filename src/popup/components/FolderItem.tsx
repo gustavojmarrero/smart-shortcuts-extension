@@ -46,6 +46,7 @@ export default function FolderItem({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={`${snapshot.isDraggingOver ? 'bg-primary/10 rounded' : ''}`}
+            style={{ minHeight: isExpanded ? 'auto' : '8px' }}
           >
             {/* Folder Header */}
             <div
@@ -199,7 +200,10 @@ export default function FolderItem({
                 )}
               </div>
             )}
-            {provided.placeholder}
+            {/* Placeholder always visible to ensure drop area exists */}
+            <div style={{ minHeight: isExpanded ? '0' : '4px' }}>
+              {provided.placeholder}
+            </div>
           </div>
         )}
       </Droppable>

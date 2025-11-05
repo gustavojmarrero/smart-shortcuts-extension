@@ -233,14 +233,26 @@ export default function App() {
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
 
+    console.log('🔄 Drag end:', {
+      draggableId,
+      source: source.droppableId,
+      destination: destination?.droppableId,
+      sourceIndex: source.index,
+      destIndex: destination?.index
+    });
+
     // Dropped outside valid droppable
-    if (!destination) return;
+    if (!destination) {
+      console.log('⚠️ No destination - dropped outside');
+      return;
+    }
 
     // Same position
     if (
       source.droppableId === destination.droppableId &&
       source.index === destination.index
     ) {
+      console.log('⚠️ Same position - no action needed');
       return;
     }
 
@@ -248,27 +260,51 @@ export default function App() {
     const [sourceType, sourceId] = source.droppableId.split('-');
     const [destType, destId] = destination.droppableId.split('-');
 
+    console.log('📍 Parsed IDs:', {
+      sourceType,
+      sourceId,
+      destType,
+      destId
+    });
+
     // Find source and destination sections
     const sourceSectionId = sourceType === 'section' ? sourceId : findSectionForFolder(sourceId);
     const destSectionId = destType === 'section' ? destId : findSectionForFolder(destId);
 
-    if (!sourceSectionId || !destSectionId) return;
+    console.log('🔍 Section IDs:', {
+      sourceSectionId,
+      destSectionId
+    });
+
+    if (!sourceSectionId || !destSectionId) {
+      console.log('⚠️ Could not find section IDs');
+      return;
+    }
 
     // Same container - just reorder
     if (source.droppableId === destination.droppableId) {
+      console.log('↕️ Reordering within same container');
       const section = config?.sections.find(s => s.id === sourceSectionId);
-      if (!section) return;
+      if (!section) {
+        console.log('⚠️ Section not found');
+        return;
+      }
 
       const containerItems = sourceType === 'section'
         ? section.items
         : findFolderItems(section.items, sourceId);
 
-      if (!containerItems) return;
+      if (!containerItems) {
+        console.log('⚠️ Container items not found');
+        return;
+      }
 
       const sortedItems = [...containerItems].sort((a, b) => a.order - b.order);
       const reordered = Array.from(sortedItems);
       const [removed] = reordered.splice(source.index, 1);
       reordered.splice(destination.index, 0, removed);
+
+      console.log('✅ Reordering items:', reordered.map(i => i.id));
 
       await reorderItems(
         sourceSectionId,
@@ -277,6 +313,7 @@ export default function App() {
       );
     } else {
       // Different containers - move item
+      console.log('➡️ Moving between containers');
       await moveItem(
         draggableId,
         sourceSectionId,
@@ -285,11 +322,14 @@ export default function App() {
         destType === 'folder' ? destId : undefined,
         destination.index
       );
+      console.log('✅ Item moved successfully');
     }
 
     // Reload config
+    console.log('🔄 Reloading config...');
     const updated = await loadConfig();
     setConfig(updated);
+    console.log('✅ Config reloaded');
   };
 
   // Helper: find which section contains a folder
