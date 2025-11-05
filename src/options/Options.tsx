@@ -556,6 +556,36 @@ export default function Options() {
 
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-6">
+        {/* Sync Info Banner */}
+        <div className="mb-6 bg-primary/10 border border-primary/20 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-text-primary mb-1">
+                Sincronización automática activa
+              </h3>
+              <p className="text-xs text-text-secondary mb-2">
+                Tus shortcuts se sincronizan automáticamente entre todos tus dispositivos con Chrome usando tu cuenta de Google.
+              </p>
+              <details className="text-xs text-text-secondary">
+                <summary className="cursor-pointer hover:text-primary transition-smooth">
+                  Ver más información
+                </summary>
+                <div className="mt-2 space-y-1 pl-4 border-l-2 border-primary/30">
+                  <p>• <strong>Sincronización automática:</strong> Los cambios se propagan en segundos entre dispositivos</p>
+                  <p>• <strong>Backup local:</strong> Copia de seguridad automática en localStorage</p>
+                  <p>• <strong>Límite:</strong> ~100KB (suficiente para cientos de shortcuts)</p>
+                  <p>• <strong>Exportar/Importar:</strong> Usa los botones arriba para backups manuales o compartir configuraciones</p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
         {sortedSections.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-text-secondary mb-4">

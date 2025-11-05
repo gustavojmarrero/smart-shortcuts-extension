@@ -76,6 +76,46 @@ Extensión de Chrome para organizar y acceder rápidamente a tus páginas web fa
    - Importar/Exportar configuración en JSON
    - Vista completa de todos tus shortcuts
 
+### 🔄 Sincronización entre Equipos
+
+Tu configuración se sincroniza **automáticamente** entre todos tus dispositivos usando Chrome Sync:
+
+#### ✨ Sincronización Automática (Recomendado)
+
+**¿Cómo funciona?**
+1. **Inicia sesión en Chrome** con tu cuenta de Google en todos tus equipos
+2. **Activa la sincronización** en Chrome:
+   - Ve a `chrome://settings/syncSetup`
+   - Asegúrate que "Extensiones" esté activado
+3. **¡Listo!** Los cambios se propagan automáticamente en segundos
+
+**Características:**
+- ✅ Sincronización en tiempo real (~5-30 segundos)
+- ✅ Backup automático local en localStorage
+- ✅ Límite de ~100KB (suficiente para cientos de shortcuts)
+- ✅ Sin configuración adicional necesaria
+- ✅ Funciona offline (sincroniza al reconectar)
+
+#### 📤 Export/Import Manual
+
+**Cuándo usar:**
+- Compartir configuraciones entre cuentas diferentes
+- Backups manuales adicionales
+- Migrar a un navegador diferente
+- Compartir configuraciones con tu equipo
+
+**Cómo hacerlo:**
+1. **Exportar:**
+   - Click en ⚙️ (Configuración) → Exportar
+   - Descarga archivo JSON con toda tu configuración
+
+2. **Importar:**
+   - Click en ⚙️ (Configuración) → Importar
+   - Selecciona el archivo JSON
+   - Confirma para reemplazar la configuración actual
+
+**⚠️ Importante:** Al importar se reemplaza TODA la configuración actual.
+
 ### Ejemplos de Uso
 
 **Ejemplo 1: Link directo**
