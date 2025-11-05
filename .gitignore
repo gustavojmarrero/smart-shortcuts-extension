@@ -27,6 +27,10 @@ dist-ssr
 # Build
 dist/
 
+# Releases (ZIP files will be uploaded manually to GitHub)
+releases/
+*.zip
+
 # Environment
 .env
 .env.local

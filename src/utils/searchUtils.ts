@@ -1,5 +1,5 @@
-import type { Section, Shortcut } from '../storage/types';
-import { isShortcut } from '../storage/types';
+import type { Section, Shortcut, Folder, Item } from '../storage/types';
+import { isShortcut, isFolder } from '../storage/types';
 
 /**
  * Fuzzy match - verifica si query está en text (case insensitive)
@@ -26,6 +26,48 @@ export function matchesSearch(shortcut: Shortcut, query: string): boolean {
 }
 
 /**
+ * Verifica si una carpeta coincide con la búsqueda por nombre
+ */
+export function matchesFolder(folder: Folder, query: string): boolean {
+  if (!query) return true;
+  return folder.name.toLowerCase().includes(query.toLowerCase());
+}
+
+/**
+ * Busca recursivamente en un array de items (shortcuts y carpetas)
+ * Retorna items que coinciden con la búsqueda, manteniendo la estructura de carpetas
+ */
+export function searchInItems(items: Item[], query: string): Item[] {
+  const matchingItems: Item[] = [];
+
+  items.forEach((item) => {
+    if (isShortcut(item)) {
+      // Si es un shortcut, verificar si coincide con la búsqueda
+      if (matchesSearch(item, query)) {
+        matchingItems.push(item);
+      }
+    } else if (isFolder(item)) {
+      // Si es una carpeta, buscar recursivamente en sus items
+      const matchingChildren = searchInItems(item.items, query);
+
+      // Incluir la carpeta si:
+      // 1. Su nombre coincide con la búsqueda, o
+      // 2. Tiene hijos que coinciden con la búsqueda
+      const folderNameMatches = matchesFolder(item, query);
+
+      if (folderNameMatches || matchingChildren.length > 0) {
+        matchingItems.push({
+          ...item,
+          items: folderNameMatches ? item.items : matchingChildren,
+        });
+      }
+    }
+  });
+
+  return matchingItems;
+}
+
+/**
  * Filtra secciones y shortcuts según búsqueda
  * Retorna solo secciones que tienen shortcuts con matches
  */
@@ -41,12 +83,8 @@ export function filterSections(sections: Section[], query: string): {
   const expandedIds: string[] = [];
 
   sections.forEach((section) => {
-    // Filter items to only include shortcuts that match the search
-    const matchingItems = section.items.filter((item) => {
-      // Only search shortcuts (not folders for now)
-      if (!isShortcut(item)) return false;
-      return matchesSearch(item, query);
-    });
+    // Buscar recursivamente en todos los items de la sección
+    const matchingItems = searchInItems(section.items, query);
 
     if (matchingItems.length > 0) {
       filteredSections.push({

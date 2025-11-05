@@ -1,4 +1,5 @@
-import { Plus, Settings, Trash2, ChevronDown, FolderPlus } from 'lucide-react';
+import { Plus, Settings, Trash2, ChevronDown, FolderPlus, GripVertical } from 'lucide-react';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
 import DirectLink from './DirectLink';
 import DynamicInput from './DynamicInput';
 import FolderItem from './FolderItem';
@@ -17,6 +18,8 @@ interface ShortcutSectionProps {
   onAddFolder: () => void;
   onEditSection: () => void;
   onDeleteSection: () => void;
+  onReorderItems?: (sectionId: string, itemIds: string[], parentFolderId?: string) => void;
+  onMoveItem?: (itemId: string, sourceSectionId: string, targetSectionId: string, sourceFolderId?: string, targetFolderId?: string, newIndex?: number) => void;
   searchQuery?: string;
 }
 
@@ -32,6 +35,8 @@ export default function ShortcutSection({
   onAddFolder,
   onEditSection,
   onDeleteSection,
+  onReorderItems,
+  onMoveItem,
   searchQuery = '',
 }: ShortcutSectionProps) {
   // Sort all items (shortcuts and folders)
@@ -114,66 +119,100 @@ export default function ShortcutSection({
           isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-2 py-1.5 space-y-0.5">
-          {sortedItems.length === 0 ? (
-            <div className="text-center py-3 text-[11px] text-text-secondary">
-              No hay items. Haz clic en + para agregar shortcuts o carpetas.
-            </div>
-          ) : (
-            sortedItems.map((item) => {
-              if (isFolder(item)) {
-                return (
-                  <FolderItem
-                    key={item.id}
-                    folder={item}
-                    depth={0}
-                    sectionId={section.id}
-                    searchQuery={searchQuery}
-                    onEditItem={(editItem) => {
-                      if (isFolder(editItem)) {
-                        onEditFolder(editItem);
-                      } else {
-                        onEditShortcut(editItem);
-                      }
-                    }}
-                    onDeleteItem={(itemId) => {
-                      // Check if item is a folder or shortcut
-                      const itemToDelete = section.items.find(i => i.id === itemId);
-                      if (itemToDelete && isFolder(itemToDelete)) {
-                        onDeleteFolder(itemId);
-                      } else {
-                        onDeleteShortcut(itemId);
-                      }
-                    }}
-                    onAddFolder={onAddFolder}
-                    onAddShortcut={onAddShortcut}
-                  />
-                );
-              } else if (isShortcut(item)) {
-                return (
-                  <div key={item.id}>
-                    {item.type === 'direct' ? (
-                      <DirectLink
-                        shortcut={item}
-                        onEdit={() => onEditShortcut(item)}
-                        onDelete={() => onDeleteShortcut(item.id)}
-                        searchQuery={searchQuery}
-                      />
-                    ) : (
-                      <DynamicInput
-                        shortcut={item}
-                        onEdit={() => onEditShortcut(item)}
-                        onDelete={() => onDeleteShortcut(item.id)}
-                        searchQuery={searchQuery}
-                      />
+        {sortedItems.length === 0 ? (
+          <div className="text-center py-3 text-[11px] text-text-secondary">
+            No hay items. Haz clic en + para agregar shortcuts o carpetas.
+          </div>
+        ) : (
+          <Droppable droppableId={`section-${section.id}`}>
+            {(provided, snapshot) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className={`px-2 py-1.5 space-y-0.5 ${
+                  snapshot.isDraggingOver ? 'bg-primary/5' : ''
+                }`}
+              >
+                {sortedItems.map((item, index) => (
+                  <Draggable key={item.id} draggableId={item.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`${snapshot.isDragging ? 'opacity-50' : ''}`}
+                      >
+                        {isFolder(item) ? (
+                          <div className="flex items-center gap-1">
+                            <div
+                              {...provided.dragHandleProps}
+                              className="cursor-grab active:cursor-grabbing p-1"
+                            >
+                              <GripVertical className="w-3 h-3 text-text-secondary" />
+                            </div>
+                            <div className="flex-1">
+                              <FolderItem
+                                folder={item}
+                                depth={0}
+                                sectionId={section.id}
+                                searchQuery={searchQuery}
+                                onEditItem={(editItem) => {
+                                  if (isFolder(editItem)) {
+                                    onEditFolder(editItem);
+                                  } else {
+                                    onEditShortcut(editItem);
+                                  }
+                                }}
+                                onDeleteItem={(itemId) => {
+                                  const itemToDelete = section.items.find(i => i.id === itemId);
+                                  if (itemToDelete && isFolder(itemToDelete)) {
+                                    onDeleteFolder(itemId);
+                                  } else {
+                                    onDeleteShortcut(itemId);
+                                  }
+                                }}
+                                onAddFolder={onAddFolder}
+                                onAddShortcut={onAddShortcut}
+                                onReorderItems={onReorderItems}
+                                onMoveItem={onMoveItem}
+                              />
+                            </div>
+                          </div>
+                        ) : isShortcut(item) ? (
+                          <div className="flex items-center gap-1">
+                            <div
+                              {...provided.dragHandleProps}
+                              className="cursor-grab active:cursor-grabbing p-1"
+                            >
+                              <GripVertical className="w-3 h-3 text-text-secondary" />
+                            </div>
+                            <div className="flex-1">
+                              {item.type === 'direct' ? (
+                                <DirectLink
+                                  shortcut={item}
+                                  onEdit={() => onEditShortcut(item)}
+                                  onDelete={() => onDeleteShortcut(item.id)}
+                                  searchQuery={searchQuery}
+                                />
+                              ) : (
+                                <DynamicInput
+                                  shortcut={item}
+                                  onEdit={() => onEditShortcut(item)}
+                                  onDelete={() => onDeleteShortcut(item.id)}
+                                  searchQuery={searchQuery}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     )}
-                  </div>
-                );
-              }
-              return null;
-            })
-          )}
-        </div>
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        )}
       </div>
     </div>
   );

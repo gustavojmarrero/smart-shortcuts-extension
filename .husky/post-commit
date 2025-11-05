@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "📦 Creating release package..."
+node scripts/package-release.cjs
+
+echo "✅ Release package ready in releases/ directory!"
+echo "💡 Don't forget to create a GitHub Release with the ZIP file"

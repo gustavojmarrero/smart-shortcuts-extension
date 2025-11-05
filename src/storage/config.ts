@@ -1,5 +1,5 @@
 // Storage layer for chrome.storage.sync
-import type { ShortcutConfig, Section, Shortcut, Folder, StorageData } from './types';
+import type { ShortcutConfig, Section, Shortcut, Folder, Item, StorageData } from './types';
 import { DEFAULT_CONFIG } from './types';
 
 const STORAGE_KEY = 'config';
@@ -149,18 +149,16 @@ export async function updateShortcut(
 }
 
 /**
- * Delete a shortcut
+ * Delete a shortcut (works recursively for shortcuts inside folders)
  */
 export async function deleteShortcut(sectionId: string, shortcutId: string): Promise<void> {
   const config = await loadConfig();
   const section = config.sections.find(s => s.id === sectionId);
   if (!section) throw new Error('Section not found');
 
-  section.items = section.items.filter(item => item.id !== shortcutId);
-  // Reorder remaining items
-  section.items.forEach((item, index) => {
-    item.order = index;
-  });
+  const deleted = deleteItemRecursively(section.items, shortcutId);
+  if (!deleted) throw new Error('Shortcut not found');
+
   await saveConfig(config);
 }
 
@@ -218,6 +216,27 @@ function findFolderById(items: (Shortcut | Folder)[], folderId: string): Folder 
 }
 
 /**
+ * Helper function to recursively delete an item (folder or shortcut) by ID
+ */
+function deleteItemRecursively(items: (Shortcut | Folder)[], itemId: string): boolean {
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].id === itemId) {
+      items.splice(i, 1);
+      // Reorder remaining items
+      items.forEach((item, index) => {
+        item.order = index;
+      });
+      return true;
+    }
+    if ('items' in items[i]) {
+      const deleted = deleteItemRecursively((items[i] as Folder).items, itemId);
+      if (deleted) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Add a folder to a section or inside another folder
  */
 export async function addFolder(
@@ -265,32 +284,31 @@ export async function updateFolder(
   const section = config.sections.find(s => s.id === sectionId);
   if (!section) throw new Error('Section not found');
 
-  const folderIndex = section.items.findIndex(item => 'items' in item && item.id === folderId);
-  if (folderIndex === -1) throw new Error('Folder not found');
+  // Find folder recursively
+  const folder = findFolderById(section.items, folderId);
+  if (!folder) throw new Error('Folder not found');
 
-  const folder = section.items[folderIndex];
-  if (!('items' in folder)) throw new Error('Item is not a folder');
-
-  section.items[folderIndex] = {
-    ...folder,
+  // Update folder properties (keep items intact)
+  Object.assign(folder, {
     ...updates,
-  };
+    items: folder.items, // Preserve items
+    isFolder: true, // Preserve discriminator
+  });
+
   await saveConfig(config);
 }
 
 /**
- * Delete a folder
+ * Delete a folder (works recursively for nested folders)
  */
 export async function deleteFolder(sectionId: string, folderId: string): Promise<void> {
   const config = await loadConfig();
   const section = config.sections.find(s => s.id === sectionId);
   if (!section) throw new Error('Section not found');
 
-  section.items = section.items.filter(item => item.id !== folderId);
-  // Reorder remaining items
-  section.items.forEach((item, index) => {
-    item.order = index;
-  });
+  const deleted = deleteItemRecursively(section.items, folderId);
+  if (!deleted) throw new Error('Folder not found');
+
   await saveConfig(config);
 }
 
@@ -317,4 +335,110 @@ export async function importConfig(jsonString: string): Promise<void> {
     console.error('Error importing config:', error);
     throw new Error('Invalid JSON format');
   }
+}
+
+/**
+ * Reorder items within a section or folder
+ */
+export async function reorderItems(
+  sectionId: string,
+  itemIds: string[],
+  parentFolderId?: string
+): Promise<void> {
+  const config = await loadConfig();
+  const section = config.sections.find(s => s.id === sectionId);
+  if (!section) throw new Error('Section not found');
+
+  let targetItems: Item[];
+
+  if (parentFolderId) {
+    const parentFolder = findFolderById(section.items, parentFolderId);
+    if (!parentFolder) throw new Error('Parent folder not found');
+    targetItems = parentFolder.items;
+  } else {
+    targetItems = section.items;
+  }
+
+  // Reorder based on itemIds array
+  const reorderedItems = itemIds
+    .map(id => targetItems.find(item => item.id === id))
+    .filter(Boolean) as Item[];
+
+  // Update order property
+  reorderedItems.forEach((item, index) => {
+    item.order = index;
+  });
+
+  // Replace items array
+  if (parentFolderId) {
+    const parentFolder = findFolderById(section.items, parentFolderId);
+    if (parentFolder) parentFolder.items = reorderedItems;
+  } else {
+    section.items = reorderedItems;
+  }
+
+  await saveConfig(config);
+}
+
+/**
+ * Move item from one location to another (can be different folders or sections)
+ */
+export async function moveItem(
+  itemId: string,
+  sourceSectionId: string,
+  targetSectionId: string,
+  sourceFolderId?: string,
+  targetFolderId?: string,
+  newIndex?: number
+): Promise<void> {
+  const config = await loadConfig();
+
+  // Find source section
+  const sourceSection = config.sections.find(s => s.id === sourceSectionId);
+  if (!sourceSection) throw new Error('Source section not found');
+
+  // Find target section
+  const targetSection = config.sections.find(s => s.id === targetSectionId);
+  if (!targetSection) throw new Error('Target section not found');
+
+  // Get source items array
+  let sourceItems: Item[];
+  if (sourceFolderId) {
+    const sourceFolder = findFolderById(sourceSection.items, sourceFolderId);
+    if (!sourceFolder) throw new Error('Source folder not found');
+    sourceItems = sourceFolder.items;
+  } else {
+    sourceItems = sourceSection.items;
+  }
+
+  // Find and remove item from source
+  const itemIndex = sourceItems.findIndex(item => item.id === itemId);
+  if (itemIndex === -1) throw new Error('Item not found');
+  const [item] = sourceItems.splice(itemIndex, 1);
+
+  // Reorder source items
+  sourceItems.forEach((item, index) => {
+    item.order = index;
+  });
+
+  // Get target items array
+  let targetItems: Item[];
+  if (targetFolderId) {
+    const targetFolder = findFolderById(targetSection.items, targetFolderId);
+    if (!targetFolder) throw new Error('Target folder not found');
+    targetItems = targetFolder.items;
+  } else {
+    targetItems = targetSection.items;
+  }
+
+  // Insert item at new position
+  const insertIndex = newIndex !== undefined ? newIndex : targetItems.length;
+  targetItems.splice(insertIndex, 0, item);
+
+  // Reorder target items
+  targetItems.forEach((item, index) => {
+    item.order = index;
+  });
+
+  await saveConfig(config);
 }

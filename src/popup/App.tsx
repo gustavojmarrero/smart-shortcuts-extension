@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Settings, ChevronsDown, ChevronsUp } from 'lucide-react';
+import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import ShortcutSection from './components/ShortcutSection';
 import EmptyState from './components/EmptyState';
 import SearchBar from './components/SearchBar';
@@ -15,6 +16,8 @@ import {
   addFolder,
   updateFolder,
   deleteFolder,
+  reorderItems,
+  moveItem,
 } from '../storage/config';
 import { filterSections } from '../utils/searchUtils';
 import type { ShortcutConfig, Section, Shortcut, Folder } from '../storage/types';
@@ -226,8 +229,106 @@ export default function App() {
 
   const allExpanded = displaySections.length > 0 && expandedSections.size === sortedSections.length;
 
+  // Global drag and drop handler
+  const handleDragEnd = async (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+
+    // Dropped outside valid droppable
+    if (!destination) return;
+
+    // Same position
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    // Parse droppableIds: "section-{id}" or "folder-{id}"
+    const [sourceType, sourceId] = source.droppableId.split('-');
+    const [destType, destId] = destination.droppableId.split('-');
+
+    // Find source and destination sections
+    const sourceSectionId = sourceType === 'section' ? sourceId : findSectionForFolder(sourceId);
+    const destSectionId = destType === 'section' ? destId : findSectionForFolder(destId);
+
+    if (!sourceSectionId || !destSectionId) return;
+
+    // Same container - just reorder
+    if (source.droppableId === destination.droppableId) {
+      const section = config?.sections.find(s => s.id === sourceSectionId);
+      if (!section) return;
+
+      const containerItems = sourceType === 'section'
+        ? section.items
+        : findFolderItems(section.items, sourceId);
+
+      if (!containerItems) return;
+
+      const sortedItems = [...containerItems].sort((a, b) => a.order - b.order);
+      const reordered = Array.from(sortedItems);
+      const [removed] = reordered.splice(source.index, 1);
+      reordered.splice(destination.index, 0, removed);
+
+      await reorderItems(
+        sourceSectionId,
+        reordered.map(item => item.id),
+        sourceType === 'folder' ? sourceId : undefined
+      );
+    } else {
+      // Different containers - move item
+      await moveItem(
+        draggableId,
+        sourceSectionId,
+        destSectionId,
+        sourceType === 'folder' ? sourceId : undefined,
+        destType === 'folder' ? destId : undefined,
+        destination.index
+      );
+    }
+
+    // Reload config
+    const updated = await loadConfig();
+    setConfig(updated);
+  };
+
+  // Helper: find which section contains a folder
+  const findSectionForFolder = (folderId: string): string | null => {
+    if (!config) return null;
+    for (const section of config.sections) {
+      if (findFolderInItems(section.items, folderId)) {
+        return section.id;
+      }
+    }
+    return null;
+  };
+
+  // Helper: recursively find folder in items
+  const findFolderInItems = (items: any[], folderId: string): boolean => {
+    for (const item of items) {
+      if (item.id === folderId) return true;
+      if ('items' in item && findFolderInItems(item.items, folderId)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Helper: find folder items by ID
+  const findFolderItems = (items: any[], folderId: string): any[] | null => {
+    for (const item of items) {
+      if ('items' in item) {
+        if (item.id === folderId) return item.items;
+        const found = findFolderItems(item.items, folderId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   return (
-    <div className="w-[380px] h-[600px] flex flex-col bg-background">
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div className="w-[380px] h-[600px] flex flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border bg-background">
         <h1 className="text-[15px] font-semibold text-text-primary">
@@ -304,6 +405,16 @@ export default function App() {
               onAddFolder={() => handleAddFolder(section.id)}
               onEditSection={() => setModal({ type: 'section', section })}
               onDeleteSection={() => handleDeleteSection(section.id)}
+              onReorderItems={async (sectionId, itemIds, parentFolderId) => {
+                await reorderItems(sectionId, itemIds, parentFolderId);
+                const updated = await loadConfig();
+                setConfig(updated);
+              }}
+              onMoveItem={async (itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex) => {
+                await moveItem(itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex);
+                const updated = await loadConfig();
+                setConfig(updated);
+              }}
               searchQuery={searchQuery}
             />
           ))
@@ -334,6 +445,7 @@ export default function App() {
           onClose={() => setModal({ type: 'none' })}
         />
       )}
-    </div>
+      </div>
+    </DragDropContext>
   );
 }

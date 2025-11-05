@@ -8,6 +8,9 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
+  FolderPlus,
+  Folder as FolderIcon,
 } from 'lucide-react';
 import {
   loadConfig,
@@ -17,24 +20,28 @@ import {
   addShortcut,
   updateShortcut,
   deleteShortcut,
+  addFolder,
+  updateFolder,
+  deleteFolder,
   exportConfig,
   importConfig,
   reorderSections,
-  reorderShortcuts,
 } from '../storage/config';
-import type { ShortcutConfig, Section, Shortcut } from '../storage/types';
-import { EditShortcutModal, EditSectionModal } from '../popup/components/EditModal';
-import { isShortcut } from '../storage/types';
+import type { ShortcutConfig, Section, Shortcut, Folder, Item } from '../storage/types';
+import { EditShortcutModal, EditSectionModal, EditFolderModal } from '../popup/components/EditModal';
+import { isShortcut, isFolder } from '../storage/types';
 
 type ModalState =
   | { type: 'none' }
   | { type: 'section'; section?: Section }
-  | { type: 'shortcut'; sectionId: string; shortcut?: Shortcut };
+  | { type: 'shortcut'; sectionId: string; shortcut?: Shortcut; parentFolderId?: string }
+  | { type: 'folder'; sectionId: string; folder?: Folder; parentFolderId?: string };
 
 export default function Options() {
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadConfig().then((cfg) => {
@@ -141,6 +148,45 @@ export default function Options() {
     setExpandedSections(newExpanded);
   };
 
+  const toggleFolder = (folderId: string) => {
+    const newExpanded = new Set(expandedFolders);
+    if (newExpanded.has(folderId)) {
+      newExpanded.delete(folderId);
+    } else {
+      newExpanded.add(folderId);
+    }
+    setExpandedFolders(newExpanded);
+  };
+
+  const handleSaveFolder = async (data: Partial<Folder>) => {
+    if (modal.type === 'folder') {
+      if (modal.folder) {
+        await updateFolder(modal.sectionId, modal.folder.id, data);
+      } else {
+        await addFolder(
+          modal.sectionId,
+          {
+            name: data.name!,
+            icon: data.icon,
+            items: [],
+          },
+          modal.parentFolderId
+        );
+      }
+      const updated = await loadConfig();
+      setConfig(updated);
+      setModal({ type: 'none' });
+    }
+  };
+
+  const handleDeleteFolder = async (sectionId: string, folderId: string) => {
+    if (confirm('¿Seguro que quieres eliminar esta carpeta y todo su contenido?')) {
+      await deleteFolder(sectionId, folderId);
+      const updated = await loadConfig();
+      setConfig(updated);
+    }
+  };
+
   const moveSectionUp = async (index: number) => {
     if (!config || index === 0) return;
     const sorted = [...config.sections].sort((a, b) => a.order - b.order);
@@ -161,29 +207,171 @@ export default function Options() {
     setConfig(updated);
   };
 
-  const moveShortcutUp = async (sectionId: string, index: number) => {
-    const section = config?.sections.find((s) => s.id === sectionId);
-    if (!section || index === 0) return;
-    const shortcuts = section.items.filter(isShortcut);
-    const sorted = [...shortcuts].sort((a, b) => a.order - b.order);
-    const newOrder = [...sorted];
-    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-    await reorderShortcuts(sectionId, newOrder.map((s) => s.id));
-    const updated = await loadConfig();
-    setConfig(updated);
-  };
+  // Componente recursivo para renderizar items (shortcuts y folders)
+  const renderItems = (
+    items: Item[],
+    sectionId: string,
+    depth: number = 0,
+    parentFolderId?: string
+  ): JSX.Element[] => {
+    const sortedItems = [...items].sort((a, b) => a.order - b.order);
 
-  const moveShortcutDown = async (sectionId: string, index: number) => {
-    const section = config?.sections.find((s) => s.id === sectionId);
-    if (!section) return;
-    const shortcuts = section.items.filter(isShortcut);
-    if (index === shortcuts.length - 1) return;
-    const sorted = [...shortcuts].sort((a, b) => a.order - b.order);
-    const newOrder = [...sorted];
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    await reorderShortcuts(sectionId, newOrder.map((s) => s.id));
-    const updated = await loadConfig();
-    setConfig(updated);
+    return sortedItems.map((item, index) => {
+      if (isFolder(item)) {
+        const isExpanded = expandedFolders.has(item.id);
+        return (
+          <div key={item.id} className="space-y-2">
+            <div
+              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background-secondary"
+              style={{ marginLeft: `${depth * 20}px` }}
+            >
+              <GripVertical className="w-4 h-4 text-text-secondary" />
+              <button
+                onClick={() => toggleFolder(item.id)}
+                className="flex items-center gap-2 flex-1 text-left hover:bg-hover rounded px-2 py-1 transition-smooth"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-text-secondary" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-text-secondary" />
+                )}
+                {item.icon ? (
+                  <span className="text-lg">{item.icon}</span>
+                ) : (
+                  <FolderIcon className="w-4 h-4 text-text-secondary" />
+                )}
+                <span className="font-medium text-text-primary">{item.name}</span>
+                <span className="text-small text-text-secondary">
+                  ({item.items.length} items)
+                </span>
+              </button>
+              <button
+                onClick={() =>
+                  setModal({
+                    type: 'folder',
+                    sectionId,
+                    parentFolderId: item.id,
+                  })
+                }
+                className="p-2 hover:bg-hover rounded transition-smooth"
+                title="Agregar subfolder"
+              >
+                <FolderPlus className="w-4 h-4 text-text-secondary" />
+              </button>
+              <button
+                onClick={() =>
+                  setModal({
+                    type: 'shortcut',
+                    sectionId,
+                    parentFolderId: item.id,
+                  })
+                }
+                className="p-2 hover:bg-hover rounded transition-smooth"
+                title="Agregar shortcut"
+              >
+                <Plus className="w-4 h-4 text-text-secondary" />
+              </button>
+              <button
+                onClick={() =>
+                  setModal({
+                    type: 'folder',
+                    sectionId,
+                    folder: item,
+                    parentFolderId,
+                  })
+                }
+                className="p-2 hover:bg-hover rounded transition-smooth"
+                title="Editar"
+              >
+                <Edit2 className="w-4 h-4 text-text-secondary" />
+              </button>
+              <button
+                onClick={() => handleDeleteFolder(sectionId, item.id)}
+                className="p-2 hover:bg-hover rounded transition-smooth"
+                title="Eliminar"
+              >
+                <Trash2 className="w-4 h-4 text-text-secondary" />
+              </button>
+            </div>
+            {isExpanded && item.items.length > 0 && (
+              <div className="space-y-2">
+                {renderItems(item.items, sectionId, depth + 1, item.id)}
+              </div>
+            )}
+          </div>
+        );
+      } else if (isShortcut(item)) {
+        return (
+          <div
+            key={item.id}
+            className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background-secondary"
+            style={{ marginLeft: `${depth * 20}px` }}
+          >
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={() => {
+                  // TODO: implement move up for items in folders
+                }}
+                disabled={index === 0}
+                className="p-0.5 hover:bg-hover rounded disabled:opacity-30"
+              >
+                <ChevronUp className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => {
+                  // TODO: implement move down for items in folders
+                }}
+                disabled={index === sortedItems.length - 1}
+                className="p-0.5 hover:bg-hover rounded disabled:opacity-30"
+              >
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
+            <GripVertical className="w-4 h-4 text-text-secondary" />
+            {item.icon && <span className="text-lg">{item.icon}</span>}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-text-primary">{item.label}</span>
+                <span
+                  className={`text-small px-2 py-0.5 rounded ${
+                    item.type === 'direct'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {item.type === 'direct' ? 'Directo' : 'Dinámico'}
+                </span>
+              </div>
+              <div className="text-small text-text-secondary truncate mt-0.5">
+                {item.type === 'direct' ? item.url : item.urlTemplate}
+              </div>
+            </div>
+            <button
+              onClick={() =>
+                setModal({
+                  type: 'shortcut',
+                  sectionId,
+                  shortcut: item,
+                  parentFolderId,
+                })
+              }
+              className="p-2 hover:bg-hover rounded transition-smooth"
+              title="Editar"
+            >
+              <Edit2 className="w-4 h-4 text-text-secondary" />
+            </button>
+            <button
+              onClick={() => handleDeleteShortcut(sectionId, item.id)}
+              className="p-2 hover:bg-hover rounded transition-smooth"
+              title="Eliminar"
+            >
+              <Trash2 className="w-4 h-4 text-text-secondary" />
+            </button>
+          </div>
+        );
+      }
+      return null;
+    }).filter(Boolean) as JSX.Element[];
   };
 
   if (!config) {
@@ -255,10 +443,6 @@ export default function Options() {
           <div className="space-y-4">
             {sortedSections.map((section, sectionIndex) => {
               const isExpanded = expandedSections.has(section.id);
-              const shortcuts = section.items.filter(isShortcut);
-              const sortedShortcuts = [...shortcuts].sort(
-                (a, b) => a.order - b.order
-              );
 
               return (
                 <div key={section.id} className="bg-background rounded-lg border border-border">
@@ -290,8 +474,17 @@ export default function Options() {
                         {section.name}
                       </span>
                       <span className="text-small text-text-secondary">
-                        ({sortedShortcuts.length} shortcuts)
+                        ({section.items.length} items)
                       </span>
+                    </button>
+                    <button
+                      onClick={() =>
+                        setModal({ type: 'folder', sectionId: section.id })
+                      }
+                      className="p-2 hover:bg-hover rounded transition-smooth"
+                      title="Agregar carpeta"
+                    >
+                      <FolderPlus className="w-4 h-4 text-text-secondary" />
                     </button>
                     <button
                       onClick={() =>
@@ -318,93 +511,16 @@ export default function Options() {
                     </button>
                   </div>
 
-                  {/* Shortcuts List */}
+                  {/* Items List (Folders and Shortcuts) */}
                   {isExpanded && (
                     <div className="p-2">
-                      {sortedShortcuts.length === 0 ? (
+                      {section.items.length === 0 ? (
                         <div className="text-center py-8 text-small text-text-secondary">
-                          No hay shortcuts. Haz clic en + para agregar.
+                          No hay items. Haz clic en los botones + o 📁 para agregar.
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {sortedShortcuts.map((shortcut, shortcutIndex) => (
-                            <div
-                              key={shortcut.id}
-                              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background-secondary"
-                            >
-                              <div className="flex flex-col gap-1">
-                                <button
-                                  onClick={() =>
-                                    moveShortcutUp(section.id, shortcutIndex)
-                                  }
-                                  disabled={shortcutIndex === 0}
-                                  className="p-0.5 hover:bg-hover rounded disabled:opacity-30"
-                                >
-                                  <ChevronUp className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    moveShortcutDown(section.id, shortcutIndex)
-                                  }
-                                  disabled={
-                                    shortcutIndex === sortedShortcuts.length - 1
-                                  }
-                                  className="p-0.5 hover:bg-hover rounded disabled:opacity-30"
-                                >
-                                  <ChevronDown className="w-3 h-3" />
-                                </button>
-                              </div>
-                              <GripVertical className="w-4 h-4 text-text-secondary" />
-                              {shortcut.icon && (
-                                <span className="text-lg">{shortcut.icon}</span>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-text-primary">
-                                    {shortcut.label}
-                                  </span>
-                                  <span
-                                    className={`text-small px-2 py-0.5 rounded ${
-                                      shortcut.type === 'direct'
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-blue-100 text-blue-700'
-                                    }`}
-                                  >
-                                    {shortcut.type === 'direct'
-                                      ? 'Directo'
-                                      : 'Dinámico'}
-                                  </span>
-                                </div>
-                                <div className="text-small text-text-secondary truncate mt-0.5">
-                                  {shortcut.type === 'direct'
-                                    ? shortcut.url
-                                    : shortcut.urlTemplate}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  setModal({
-                                    type: 'shortcut',
-                                    sectionId: section.id,
-                                    shortcut,
-                                  })
-                                }
-                                className="p-2 hover:bg-hover rounded transition-smooth"
-                                title="Editar"
-                              >
-                                <Edit2 className="w-4 h-4 text-text-secondary" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleDeleteShortcut(section.id, shortcut.id)
-                                }
-                                className="p-2 hover:bg-hover rounded transition-smooth"
-                                title="Eliminar"
-                              >
-                                <Trash2 className="w-4 h-4 text-text-secondary" />
-                              </button>
-                            </div>
-                          ))}
+                          {renderItems(section.items, section.id)}
                         </div>
                       )}
                     </div>
@@ -429,6 +545,14 @@ export default function Options() {
           sectionId={modal.sectionId}
           shortcut={modal.shortcut}
           onSave={handleSaveShortcut}
+          onClose={() => setModal({ type: 'none' })}
+        />
+      )}
+      {modal.type === 'folder' && (
+        <EditFolderModal
+          sectionId={modal.sectionId}
+          folder={modal.folder}
+          onSave={handleSaveFolder}
           onClose={() => setModal({ type: 'none' })}
         />
       )}

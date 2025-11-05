@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔨 Building extension before commit..."
+npm run build
+
+echo "✅ Build complete!"
