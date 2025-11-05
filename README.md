@@ -7,7 +7,9 @@ Extensión de Chrome para organizar y acceder rápidamente a tus páginas web fa
 - 🚀 **Ultra rápido**: Abre con `Ctrl+Shift+S` (o `Cmd+Shift+S` en Mac)
 - 🎯 **Enlaces directos**: Acceso instantáneo a URLs
 - ⚡ **Enlaces dinámicos**: Construye URLs con inputs (ej: número de orden → URL completa)
-- 📂 **Organización por secciones**: Amazon, Mercadolibre, Planillas, etc.
+- ✅ **Validación con regex**: Valida inputs antes de abrir URLs (emails, códigos, etc.)
+- 📂 **Folders anidados**: Organiza shortcuts en carpetas recursivas
+- 🔍 **Búsqueda inteligente**: Filtra shortcuts y carpetas en tiempo real
 - ⚙️ **Completamente configurable**: Crea, edita, reordena y elimina shortcuts
 - 💾 **Sincronización**: Tu configuración se sincroniza entre dispositivos
 - 📤 **Import/Export**: Respalda y comparte tu configuración
@@ -56,12 +58,15 @@ Extensión de Chrome para organizar y acceder rápidamente a tus páginas web fa
 - Nombre: "Analítica Amazon"
 - URL: `https://sellercentral.amazon.com/analytics`
 
-**Ejemplo 2: Link dinámico**
+**Ejemplo 2: Link dinámico con validación**
 - Tipo: Dinámico
 - Nombre: "Pedido Amazon"
 - URL Template: `https://www.amazon.com.mx/your-orders/order-details?orderID={input}`
 - Placeholder: "Ingresa número de orden"
+- Validación Regex: `^\d{3}-\d{7}-\d{7}$`
+- Mensaje de Error: "Formato de orden inválido (debe ser XXX-XXXXXXX-XXXXXXX)"
 - Uso: Escribe "702-8229162-0992232" → Enter → abre la página del pedido
+- Si escribes un formato incorrecto, muestra error y no abre la URL
 
 ## Desarrollo
 
@@ -117,9 +122,10 @@ npm run lint
 
 ## Roadmap
 
-- [ ] Búsqueda rápida (Ctrl+F)
+- [x] Búsqueda rápida
+- [x] Folders anidados con soporte recursivo
+- [x] Validación de inputs con regex
 - [ ] Historial de uso
-- [ ] Validación de inputs con regex
 - [ ] Dark mode
 - [ ] Atajos de teclado personalizados
 - [ ] Drag & drop nativo
