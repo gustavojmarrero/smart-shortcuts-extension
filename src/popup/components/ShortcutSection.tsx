@@ -113,26 +113,23 @@ export default function ShortcutSection({
         </div>
       </div>
 
-      {/* Content con animación de collapse */}
-      <div
-        className={`overflow-hidden transition-accordion ${
-          isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        {sortedItems.length === 0 ? (
-          <div className="text-center py-3 text-[11px] text-text-secondary">
-            No hay items. Haz clic en + para agregar shortcuts o carpetas.
-          </div>
-        ) : (
-          <Droppable droppableId={`section-${section.id}`}>
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`px-2 py-1.5 space-y-0.5 ${
-                  snapshot.isDraggingOver ? 'bg-primary/5' : ''
-                }`}
-              >
+      {/* Content - Droppable always active */}
+      <Droppable droppableId={`section-${section.id}`}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`overflow-hidden transition-accordion ${
+              isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+            } ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
+            style={{ minHeight: isExpanded ? 'auto' : '20px' }}
+          >
+            {sortedItems.length === 0 ? (
+              <div className="text-center py-3 text-[11px] text-text-secondary">
+                No hay items. Haz clic en + para agregar shortcuts o carpetas.
+              </div>
+            ) : (
+              <div className="px-2 py-1.5 space-y-0.5">
                 {sortedItems.map((item, index) => (
                   <Draggable key={item.id} draggableId={item.id} index={index}>
                     {(provided, snapshot) => (
@@ -208,12 +205,12 @@ export default function ShortcutSection({
                     )}
                   </Draggable>
                 ))}
-                {provided.placeholder}
               </div>
             )}
-          </Droppable>
+            {provided.placeholder}
+          </div>
         )}
-      </div>
+      </Droppable>
     </div>
   );
 }

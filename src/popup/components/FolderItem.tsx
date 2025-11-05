@@ -46,7 +46,7 @@ export default function FolderItem({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={`${snapshot.isDraggingOver ? 'bg-primary/10 rounded' : ''}`}
-            style={{ minHeight: isExpanded ? 'auto' : '8px' }}
+            style={{ minHeight: '40px' }}
           >
             {/* Folder Header */}
             <div
