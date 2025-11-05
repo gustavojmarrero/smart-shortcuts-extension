@@ -3,6 +3,7 @@ import type { ShortcutConfig, Section, Shortcut, Folder, Item, StorageData } fro
 import { DEFAULT_CONFIG } from './types';
 
 const STORAGE_KEY = 'config';
+const BACKUP_KEY = 'shortcuts_backup';
 
 /**
  * Load configuration from chrome.storage.sync
@@ -10,7 +11,25 @@ const STORAGE_KEY = 'config';
 export async function loadConfig(): Promise<ShortcutConfig> {
   try {
     const result = await chrome.storage.sync.get([STORAGE_KEY]) as StorageData;
-    const config = result.config || DEFAULT_CONFIG;
+    let config: ShortcutConfig = result.config || DEFAULT_CONFIG;
+
+    // If no config in sync storage, try to recover from localStorage backup
+    if (!result.config) {
+      console.log('⚠️ No config found in sync storage, checking backup...');
+      const backup = localStorage.getItem(BACKUP_KEY);
+      if (backup) {
+        try {
+          const parsedBackup = JSON.parse(backup) as ShortcutConfig;
+          config = parsedBackup;
+          console.log('✅ Config recovered from backup!');
+          // Save recovered config back to sync storage
+          await saveConfig(config);
+        } catch (e) {
+          console.error('Failed to parse backup:', e);
+          config = DEFAULT_CONFIG;
+        }
+      }
+    }
 
     // Apply migration if needed
     const { migrateToV2_1, needsMigration } = await import('./migration');
@@ -39,6 +58,14 @@ export async function saveConfig(config: ShortcutConfig): Promise<void> {
       lastModified: Date.now(),
     };
     await chrome.storage.sync.set({ [STORAGE_KEY]: updatedConfig });
+
+    // Also save a backup to localStorage for recovery
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(updatedConfig));
+    } catch (e) {
+      // localStorage might be full or unavailable, but don't fail the main save
+      console.warn('Could not save backup to localStorage:', e);
+    }
   } catch (error) {
     console.error('Error saving config:', error);
     throw error;

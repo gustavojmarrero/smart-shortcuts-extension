@@ -39,167 +39,170 @@ export default function FolderItem({
 
   return (
     <div className="border-l-2 border-border/30">
-      {/* Folder Header */}
-      <div
-        className="relative"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        style={{ paddingLeft: leftPadding }}
-      >
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center gap-1.5 px-2 py-1 hover:bg-hover transition-smooth text-left rounded-md"
-        >
-          <ChevronDown
-            className={`w-3 h-3 text-text-secondary transition-transform duration-200 flex-shrink-0 ${
-              isExpanded ? 'rotate-0' : '-rotate-90'
-            }`}
-          />
-          {folder.icon ? (
-            <span className="text-sm flex-shrink-0">{folder.icon}</span>
-          ) : (
-            <FolderIcon className="w-3 h-3 text-text-secondary flex-shrink-0" />
-          )}
-          <span className="text-[12px] font-medium text-text-primary">
-            {folder.name}
-          </span>
-          <span className="text-[10px] text-text-secondary">
-            ({sortedItems.length})
-          </span>
-        </button>
-
-        {/* Hover actions */}
-        {isHovered && (
-          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5 bg-background shadow-md rounded-lg border border-border p-0.5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddFolder(sectionId, folder.id);
-              }}
-              className="p-1 hover:bg-hover rounded transition-smooth"
-              title="Agregar carpeta"
-            >
-              <FolderIcon className="w-3 h-3 text-text-secondary" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddShortcut(sectionId, folder.id);
-              }}
-              className="p-1 hover:bg-hover rounded transition-smooth"
-              title="Agregar shortcut"
-            >
-              <Plus className="w-3 h-3 text-text-secondary" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditItem(folder);
-              }}
-              className="p-1 hover:bg-hover rounded transition-smooth"
-              title="Editar carpeta"
-            >
-              <Edit2 className="w-3 h-3 text-text-secondary" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteItem(folder.id);
-              }}
-              className="p-1 hover:bg-hover rounded transition-smooth"
-              title="Eliminar carpeta"
-            >
-              <Trash2 className="w-3 h-3 text-text-secondary" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Folder Content */}
-      {isExpanded && (
-        <Droppable droppableId={`folder-${folder.id}`}>
-          {(provided, snapshot) => (
+      {/* Droppable wrapper - always active even when collapsed */}
+      <Droppable droppableId={`folder-${folder.id}`}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`${snapshot.isDraggingOver ? 'bg-primary/10 rounded' : ''}`}
+          >
+            {/* Folder Header */}
             <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className={`space-y-0.5 ${
-                snapshot.isDraggingOver ? 'bg-primary/5 rounded' : ''
-              }`}
+              className="relative"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
               style={{ paddingLeft: leftPadding }}
             >
-              {sortedItems.length === 0 ? (
-                <div className="text-center py-2 text-[10px] text-text-secondary">
-                  Carpeta vacía
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex items-center gap-1.5 px-2 py-1 hover:bg-hover transition-smooth text-left rounded-md"
+              >
+                <ChevronDown
+                  className={`w-3 h-3 text-text-secondary transition-transform duration-200 flex-shrink-0 ${
+                    isExpanded ? 'rotate-0' : '-rotate-90'
+                  }`}
+                />
+                {folder.icon ? (
+                  <span className="text-sm flex-shrink-0">{folder.icon}</span>
+                ) : (
+                  <FolderIcon className="w-3 h-3 text-text-secondary flex-shrink-0" />
+                )}
+                <span className="text-[12px] font-medium text-text-primary">
+                  {folder.name}
+                </span>
+                <span className="text-[10px] text-text-secondary">
+                  ({sortedItems.length})
+                </span>
+              </button>
+
+              {/* Hover actions */}
+              {isHovered && (
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5 bg-background shadow-md rounded-lg border border-border p-0.5">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddFolder(sectionId, folder.id);
+                    }}
+                    className="p-1 hover:bg-hover rounded transition-smooth"
+                    title="Agregar carpeta"
+                  >
+                    <FolderIcon className="w-3 h-3 text-text-secondary" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddShortcut(sectionId, folder.id);
+                    }}
+                    className="p-1 hover:bg-hover rounded transition-smooth"
+                    title="Agregar shortcut"
+                  >
+                    <Plus className="w-3 h-3 text-text-secondary" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditItem(folder);
+                    }}
+                    className="p-1 hover:bg-hover rounded transition-smooth"
+                    title="Editar carpeta"
+                  >
+                    <Edit2 className="w-3 h-3 text-text-secondary" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteItem(folder.id);
+                    }}
+                    className="p-1 hover:bg-hover rounded transition-smooth"
+                    title="Eliminar carpeta"
+                  >
+                    <Trash2 className="w-3 h-3 text-text-secondary" />
+                  </button>
                 </div>
-              ) : (
-                sortedItems.map((item, index) => (
-                  <Draggable key={item.id} draggableId={item.id} index={index}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`${snapshot.isDragging ? 'opacity-50' : ''}`}
-                      >
-                        {isFolder(item) ? (
-                          <div className="flex items-center gap-1">
-                            <div
-                              {...provided.dragHandleProps}
-                              className="cursor-grab active:cursor-grabbing p-1"
-                            >
-                              <GripVertical className="w-3 h-3 text-text-secondary" />
-                            </div>
-                            <div className="flex-1">
-                              <FolderItem
-                                folder={item}
-                                depth={depth + 1}
-                                sectionId={sectionId}
-                                searchQuery={searchQuery}
-                                onEditItem={onEditItem}
-                                onDeleteItem={onDeleteItem}
-                                onAddFolder={onAddFolder}
-                                onAddShortcut={onAddShortcut}
-                                onReorderItems={onReorderItems}
-                                onMoveItem={onMoveItem}
-                              />
-                            </div>
-                          </div>
-                        ) : isShortcut(item) ? (
-                          <div className="flex items-center gap-1 pl-4">
-                            <div
-                              {...provided.dragHandleProps}
-                              className="cursor-grab active:cursor-grabbing p-1"
-                            >
-                              <GripVertical className="w-3 h-3 text-text-secondary" />
-                            </div>
-                            <div className="flex-1">
-                              {item.type === 'direct' ? (
-                                <DirectLink
-                                  shortcut={item}
-                                  onEdit={() => onEditItem(item)}
-                                  onDelete={() => onDeleteItem(item.id)}
-                                  searchQuery={searchQuery}
-                                />
-                              ) : (
-                                <DynamicInput
-                                  shortcut={item}
-                                  onEdit={() => onEditItem(item)}
-                                  onDelete={() => onDeleteItem(item.id)}
-                                  searchQuery={searchQuery}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                  </Draggable>
-                ))
               )}
-              {provided.placeholder}
             </div>
-          )}
-        </Droppable>
-      )}
+
+            {/* Folder Content - only render when expanded */}
+            {isExpanded && (
+              <div
+                className="space-y-0.5"
+                style={{ paddingLeft: leftPadding }}
+              >
+                {sortedItems.length === 0 ? (
+                  <div className="text-center py-2 text-[10px] text-text-secondary">
+                    Carpeta vacía
+                  </div>
+                ) : (
+                  sortedItems.map((item, index) => (
+                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`${snapshot.isDragging ? 'opacity-50' : ''}`}
+                        >
+                          {isFolder(item) ? (
+                            <div className="flex items-center gap-1">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="cursor-grab active:cursor-grabbing p-1"
+                              >
+                                <GripVertical className="w-3 h-3 text-text-secondary" />
+                              </div>
+                              <div className="flex-1">
+                                <FolderItem
+                                  folder={item}
+                                  depth={depth + 1}
+                                  sectionId={sectionId}
+                                  searchQuery={searchQuery}
+                                  onEditItem={onEditItem}
+                                  onDeleteItem={onDeleteItem}
+                                  onAddFolder={onAddFolder}
+                                  onAddShortcut={onAddShortcut}
+                                  onReorderItems={onReorderItems}
+                                  onMoveItem={onMoveItem}
+                                />
+                              </div>
+                            </div>
+                          ) : isShortcut(item) ? (
+                            <div className="flex items-center gap-1 pl-4">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="cursor-grab active:cursor-grabbing p-1"
+                              >
+                                <GripVertical className="w-3 h-3 text-text-secondary" />
+                              </div>
+                              <div className="flex-1">
+                                {item.type === 'direct' ? (
+                                  <DirectLink
+                                    shortcut={item}
+                                    onEdit={() => onEditItem(item)}
+                                    onDelete={() => onDeleteItem(item.id)}
+                                    searchQuery={searchQuery}
+                                  />
+                                ) : (
+                                  <DynamicInput
+                                    shortcut={item}
+                                    onEdit={() => onEditItem(item)}
+                                    onDelete={() => onDeleteItem(item.id)}
+                                    searchQuery={searchQuery}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))
+                )}
+              </div>
+            )}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
     </div>
   );
 }
