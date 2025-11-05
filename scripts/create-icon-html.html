@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Icons</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    canvas {
+      border: 2px solid #333;
+      margin: 10px;
+      background: white;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Smart Shortcuts - Icon Generator</h1>
+  <p>Haz clic en "Generate Icons" y luego descarga cada icono (click derecho > guardar imagen como...)</p>
+
+  <button onclick="generateIcons()">Generate Icons</button>
+  <br>
+
+  <div id="icons"></div>
+
+  <script>
+    function generateIcons() {
+      const sizes = [16, 48, 128];
+      const container = document.getElementById('icons');
+      container.innerHTML = '';
+
+      sizes.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Background - Blue
+        ctx.fillStyle = '#1A73E8';
+        const radius = size < 48 ? 3 : size / 5.3;
+        roundRect(ctx, 0, 0, size, size, radius);
+        ctx.fill();
+
+        // White arrow and lines
+        ctx.fillStyle = 'white';
+
+        // Arrow pointing up
+        const scale = size / 128;
+        ctx.beginPath();
+        ctx.moveTo(64 * scale, 32 * scale);
+        ctx.lineTo(80 * scale, 48 * scale);
+        ctx.lineTo(68 * scale, 48 * scale);
+        ctx.lineTo(68 * scale, 68 * scale);
+        ctx.lineTo(60 * scale, 68 * scale);
+        ctx.lineTo(60 * scale, 48 * scale);
+        ctx.lineTo(48 * scale, 48 * scale);
+        ctx.closePath();
+        ctx.fill();
+
+        // Lines below
+        roundRect(ctx, 40 * scale, 76 * scale, 48 * scale, 8 * scale, 2 * scale);
+        ctx.fill();
+        roundRect(ctx, 40 * scale, 88 * scale, 32 * scale, 8 * scale, 2 * scale);
+        ctx.fill();
+
+        const label = document.createElement('div');
+        label.innerHTML = `<strong>icon${size}.png</strong> (click derecho para guardar)`;
+        container.appendChild(label);
+        container.appendChild(canvas);
+        container.appendChild(document.createElement('br'));
+      });
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+  </script>
+</body>
+</html>
