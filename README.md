@@ -1,12 +1,12 @@
 # Smart Shortcuts - Chrome Extension
 
-[![GitHub release](https://img.shields.io/github/v/release/YOUR_USERNAME/shortcuts)](https://github.com/YOUR_USERNAME/shortcuts/releases/latest)
-[![GitHub downloads](https://img.shields.io/github/downloads/YOUR_USERNAME/shortcuts/total)](https://github.com/YOUR_USERNAME/shortcuts/releases)
+[![GitHub release](https://img.shields.io/github/v/release/gustavojmarrero/smart-shortcuts-extension)](https://github.com/gustavojmarrero/smart-shortcuts-extension/releases/latest)
+[![GitHub downloads](https://img.shields.io/github/downloads/gustavojmarrero/smart-shortcuts-extension/total)](https://github.com/gustavojmarrero/smart-shortcuts-extension/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Extensión de Chrome para organizar y acceder rápidamente a tus páginas web favoritas con accesos directos inteligentes.
 
-> 💡 **[Descargar la última versión (v2.1.0)](https://github.com/YOUR_USERNAME/shortcuts/releases/latest)** - ¡Sin compilar, lista para usar!
+> 💡 **[Descargar la última versión (v2.1.0)](https://github.com/gustavojmarrero/smart-shortcuts-extension/releases/latest)** - ¡Sin compilar, lista para usar!
 
 ## Características
 
@@ -33,7 +33,7 @@ Extensión de Chrome para organizar y acceder rápidamente a tus páginas web fa
 
 ### 📦 Descarga Directa (Recomendado)
 
-1. Ve a la [página de Releases](https://github.com/YOUR_USERNAME/shortcuts/releases/latest)
+1. Ve a la [página de Releases](https://github.com/gustavojmarrero/smart-shortcuts-extension/releases/latest)
 2. Descarga el archivo `smart-shortcuts-v2.1.0.zip`
 3. Descomprime el archivo ZIP
 4. Abre Chrome y ve a `chrome://extensions/`
