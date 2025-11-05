@@ -24,6 +24,7 @@ import {
 } from '../storage/config';
 import type { ShortcutConfig, Section, Shortcut } from '../storage/types';
 import { EditShortcutModal, EditSectionModal } from '../popup/components/EditModal';
+import { isShortcut } from '../storage/types';
 
 type ModalState =
   | { type: 'none' }
@@ -83,7 +84,7 @@ export default function Options() {
         await addSection({
           name: data.name!,
           icon: data.icon,
-          shortcuts: [],
+          items: [],
         });
       }
       const updated = await loadConfig();
@@ -163,7 +164,8 @@ export default function Options() {
   const moveShortcutUp = async (sectionId: string, index: number) => {
     const section = config?.sections.find((s) => s.id === sectionId);
     if (!section || index === 0) return;
-    const sorted = [...section.shortcuts].sort((a, b) => a.order - b.order);
+    const shortcuts = section.items.filter(isShortcut);
+    const sorted = [...shortcuts].sort((a, b) => a.order - b.order);
     const newOrder = [...sorted];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
     await reorderShortcuts(sectionId, newOrder.map((s) => s.id));
@@ -173,8 +175,10 @@ export default function Options() {
 
   const moveShortcutDown = async (sectionId: string, index: number) => {
     const section = config?.sections.find((s) => s.id === sectionId);
-    if (!section || index === section.shortcuts.length - 1) return;
-    const sorted = [...section.shortcuts].sort((a, b) => a.order - b.order);
+    if (!section) return;
+    const shortcuts = section.items.filter(isShortcut);
+    if (index === shortcuts.length - 1) return;
+    const sorted = [...shortcuts].sort((a, b) => a.order - b.order);
     const newOrder = [...sorted];
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
     await reorderShortcuts(sectionId, newOrder.map((s) => s.id));
@@ -251,7 +255,8 @@ export default function Options() {
           <div className="space-y-4">
             {sortedSections.map((section, sectionIndex) => {
               const isExpanded = expandedSections.has(section.id);
-              const sortedShortcuts = [...section.shortcuts].sort(
+              const shortcuts = section.items.filter(isShortcut);
+              const sortedShortcuts = [...shortcuts].sort(
                 (a, b) => a.order - b.order
               );
 

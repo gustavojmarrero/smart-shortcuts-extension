@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, Folder as FolderIcon, Plus, Edit2, Trash2 } from 'lucide-react';
 import DirectLink from './DirectLink';
 import DynamicInput from './DynamicInput';
-import type { Folder, Item, Shortcut } from '../../storage/types';
+import type { Folder, Item } from '../../storage/types';
 import { isFolder, isShortcut } from '../../storage/types';
 
 interface FolderItemProps {

@@ -82,7 +82,7 @@ export default function App() {
         const newSection = await addSection({
           name: data.name!,
           icon: data.icon,
-          shortcuts: [],
+          items: [],
         });
         // Auto-expandir nueva sección
         setExpandedSections((prev) => new Set([...prev, newSection.id]));

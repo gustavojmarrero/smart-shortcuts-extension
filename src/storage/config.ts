@@ -1,5 +1,5 @@
 // Storage layer for chrome.storage.sync
-import type { ShortcutConfig, Section, Shortcut, StorageData } from './types';
+import type { ShortcutConfig, Section, Shortcut, Folder, StorageData } from './types';
 import { DEFAULT_CONFIG } from './types';
 
 const STORAGE_KEY = 'config';
@@ -10,7 +10,17 @@ const STORAGE_KEY = 'config';
 export async function loadConfig(): Promise<ShortcutConfig> {
   try {
     const result = await chrome.storage.sync.get([STORAGE_KEY]) as StorageData;
-    return result.config || DEFAULT_CONFIG;
+    const config = result.config || DEFAULT_CONFIG;
+
+    // Apply migration if needed
+    const { migrateToV2_1, needsMigration } = await import('./migration');
+    if (needsMigration(config)) {
+      const migratedConfig = migrateToV2_1(config);
+      await saveConfig(migratedConfig);
+      return migratedConfig;
+    }
+
+    return config;
   } catch (error) {
     console.error('Error loading config:', error);
     return DEFAULT_CONFIG;
@@ -42,7 +52,7 @@ export async function addSection(section: Omit<Section, 'id' | 'order'>): Promis
     ...section,
     id: crypto.randomUUID(),
     order: config.sections.length,
-    shortcuts: [],
+    items: [],
   };
   config.sections.push(newSection);
   await saveConfig(config);
@@ -91,9 +101,9 @@ export async function addShortcut(
   const newShortcut: Shortcut = {
     ...shortcut,
     id: crypto.randomUUID(),
-    order: section.shortcuts.length,
+    order: section.items.length,
   };
-  section.shortcuts.push(newShortcut);
+  section.items.push(newShortcut);
   await saveConfig(config);
   return newShortcut;
 }
@@ -110,11 +120,14 @@ export async function updateShortcut(
   const section = config.sections.find(s => s.id === sectionId);
   if (!section) throw new Error('Section not found');
 
-  const shortcutIndex = section.shortcuts.findIndex(sc => sc.id === shortcutId);
+  const shortcutIndex = section.items.findIndex(item => !('items' in item) && item.id === shortcutId);
   if (shortcutIndex === -1) throw new Error('Shortcut not found');
 
-  section.shortcuts[shortcutIndex] = {
-    ...section.shortcuts[shortcutIndex],
+  const shortcut = section.items[shortcutIndex];
+  if ('items' in shortcut) throw new Error('Item is a folder, not a shortcut');
+
+  section.items[shortcutIndex] = {
+    ...shortcut,
     ...updates,
   };
   await saveConfig(config);
@@ -128,10 +141,10 @@ export async function deleteShortcut(sectionId: string, shortcutId: string): Pro
   const section = config.sections.find(s => s.id === sectionId);
   if (!section) throw new Error('Section not found');
 
-  section.shortcuts = section.shortcuts.filter(sc => sc.id !== shortcutId);
-  // Reorder remaining shortcuts
-  section.shortcuts.forEach((shortcut, index) => {
-    shortcut.order = index;
+  section.items = section.items.filter(item => item.id !== shortcutId);
+  // Reorder remaining items
+  section.items.forEach((item, index) => {
+    item.order = index;
   });
   await saveConfig(config);
 }
@@ -154,22 +167,86 @@ export async function reorderSections(sectionIds: string[]): Promise<void> {
 }
 
 /**
- * Reorder shortcuts within a section
+ * Reorder items within a section
  */
-export async function reorderShortcuts(sectionId: string, shortcutIds: string[]): Promise<void> {
+export async function reorderShortcuts(sectionId: string, itemIds: string[]): Promise<void> {
   const config = await loadConfig();
   const section = config.sections.find(s => s.id === sectionId);
   if (!section) throw new Error('Section not found');
 
-  const reorderedShortcuts = shortcutIds
-    .map(id => section.shortcuts.find(sc => sc.id === id))
-    .filter((sc): sc is Shortcut => sc !== undefined);
+  const reorderedItems = itemIds
+    .map(id => section.items.find(item => item.id === id))
+    .filter((item): item is (Shortcut | Folder) => item !== undefined);
 
-  reorderedShortcuts.forEach((shortcut, index) => {
-    shortcut.order = index;
+  reorderedItems.forEach((item, index) => {
+    item.order = index;
   });
 
-  section.shortcuts = reorderedShortcuts;
+  section.items = reorderedItems;
+  await saveConfig(config);
+}
+
+/**
+ * Add a folder to a section
+ */
+export async function addFolder(
+  sectionId: string,
+  folder: Omit<Folder, 'id' | 'order' | 'isFolder'>
+): Promise<Folder> {
+  const config = await loadConfig();
+  const section = config.sections.find(s => s.id === sectionId);
+  if (!section) throw new Error('Section not found');
+
+  const newFolder: Folder = {
+    ...folder,
+    id: crypto.randomUUID(),
+    order: section.items.length,
+    isFolder: true,
+    items: folder.items || [],
+  };
+  section.items.push(newFolder);
+  await saveConfig(config);
+  return newFolder;
+}
+
+/**
+ * Update an existing folder
+ */
+export async function updateFolder(
+  sectionId: string,
+  folderId: string,
+  updates: Partial<Folder>
+): Promise<void> {
+  const config = await loadConfig();
+  const section = config.sections.find(s => s.id === sectionId);
+  if (!section) throw new Error('Section not found');
+
+  const folderIndex = section.items.findIndex(item => 'items' in item && item.id === folderId);
+  if (folderIndex === -1) throw new Error('Folder not found');
+
+  const folder = section.items[folderIndex];
+  if (!('items' in folder)) throw new Error('Item is not a folder');
+
+  section.items[folderIndex] = {
+    ...folder,
+    ...updates,
+  };
+  await saveConfig(config);
+}
+
+/**
+ * Delete a folder
+ */
+export async function deleteFolder(sectionId: string, folderId: string): Promise<void> {
+  const config = await loadConfig();
+  const section = config.sections.find(s => s.id === sectionId);
+  if (!section) throw new Error('Section not found');
+
+  section.items = section.items.filter(item => item.id !== folderId);
+  // Reorder remaining items
+  section.items.forEach((item, index) => {
+    item.order = index;
+  });
   await saveConfig(config);
 }
 

@@ -2,6 +2,7 @@ import { Plus, Settings, Trash2, ChevronDown } from 'lucide-react';
 import DirectLink from './DirectLink';
 import DynamicInput from './DynamicInput';
 import type { Section, Shortcut } from '../../storage/types';
+import { isShortcut } from '../../storage/types';
 
 interface ShortcutSectionProps {
   section: Section;
@@ -26,7 +27,10 @@ export default function ShortcutSection({
   onDeleteSection,
   searchQuery = '',
 }: ShortcutSectionProps) {
-  const sortedShortcuts = [...section.shortcuts].sort((a, b) => a.order - b.order);
+  // Filter and sort items - for now, only show shortcuts (folders will be implemented later)
+  const sortedShortcuts = [...section.items]
+    .filter(isShortcut)
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="border-b border-border last:border-b-0">

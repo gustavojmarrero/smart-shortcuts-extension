@@ -1,4 +1,5 @@
 import type { Section, Shortcut } from '../storage/types';
+import { isShortcut } from '../storage/types';
 
 /**
  * Fuzzy match - verifica si query está en text (case insensitive)
@@ -40,14 +41,17 @@ export function filterSections(sections: Section[], query: string): {
   const expandedIds: string[] = [];
 
   sections.forEach((section) => {
-    const matchingShortcuts = section.shortcuts.filter((shortcut) =>
-      matchesSearch(shortcut, query)
-    );
+    // Filter items to only include shortcuts that match the search
+    const matchingItems = section.items.filter((item) => {
+      // Only search shortcuts (not folders for now)
+      if (!isShortcut(item)) return false;
+      return matchesSearch(item, query);
+    });
 
-    if (matchingShortcuts.length > 0) {
+    if (matchingItems.length > 0) {
       filteredSections.push({
         ...section,
-        shortcuts: matchingShortcuts,
+        items: matchingItems,
       });
       expandedIds.push(section.id);
     }
