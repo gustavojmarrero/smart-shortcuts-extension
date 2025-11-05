@@ -305,29 +305,28 @@ export default function Options() {
                     className={`space-y-2 p-2 ${snapshot.isDraggingOver ? 'bg-primary/5 rounded' : ''}`}
                     style={{ minHeight: '40px' }}
                   >
-                    {item.items.length === 0 ? (
+                    {item.items.length === 0 && !snapshot.isDraggingOver && (
                       <div className="text-center py-4 text-small text-text-secondary">
                         Arrastra items aquí
                       </div>
-                    ) : (
-                      item.items
-                        .sort((a, b) => a.order - b.order)
-                        .map((subItem, subIndex) => (
-                          <Draggable key={subItem.id} draggableId={subItem.id} index={subIndex}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                className={snapshot.isDragging ? 'opacity-50' : ''}
-                              >
-                                <div {...provided.dragHandleProps}>
-                                  {renderItems([subItem], sectionId, depth + 1, item.id)}
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))
                     )}
+                    {item.items
+                      .sort((a, b) => a.order - b.order)
+                      .map((subItem, subIndex) => (
+                        <Draggable key={subItem.id} draggableId={subItem.id} index={subIndex}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={snapshot.isDragging ? 'opacity-50' : ''}
+                            >
+                              <div {...provided.dragHandleProps}>
+                                {renderItems([subItem], sectionId, depth + 1, item.id)}
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
                     {provided.placeholder}
                   </div>
                 )}
@@ -651,31 +650,30 @@ export default function Options() {
                           className={`p-2 ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
                           style={{ minHeight: '40px' }}
                         >
-                          {section.items.length === 0 ? (
+                          {section.items.length === 0 && !snapshot.isDraggingOver && (
                             <div className="text-center py-8 text-small text-text-secondary">
                               No hay items. Haz clic en los botones + o 📁 para agregar.
                             </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {section.items
-                                .sort((a, b) => a.order - b.order)
-                                .map((item, index) => (
-                                  <Draggable key={item.id} draggableId={item.id} index={index}>
-                                    {(provided, snapshot) => (
-                                      <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        className={snapshot.isDragging ? 'opacity-50' : ''}
-                                      >
-                                        <div {...provided.dragHandleProps}>
-                                          {renderItems([item], section.id)}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </Draggable>
-                                ))}
-                            </div>
                           )}
+                          <div className="space-y-2">
+                            {section.items
+                              .sort((a, b) => a.order - b.order)
+                              .map((item, index) => (
+                                <Draggable key={item.id} draggableId={item.id} index={index}>
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      className={snapshot.isDragging ? 'opacity-50' : ''}
+                                    >
+                                      <div {...provided.dragHandleProps}>
+                                        {renderItems([item], section.id)}
+                                      </div>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                          </div>
                           {provided.placeholder}
                         </div>
                       )}
