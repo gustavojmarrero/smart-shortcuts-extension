@@ -12,10 +12,10 @@ interface ShortcutSectionProps {
   onToggle: () => void;
   onEditShortcut: (shortcut: Shortcut) => void;
   onDeleteShortcut: (shortcutId: string) => void;
-  onAddShortcut: () => void;
+  onAddShortcut: (parentFolderId?: string) => void;
   onEditFolder: (folder: Folder) => void;
   onDeleteFolder: (folderId: string) => void;
-  onAddFolder: () => void;
+  onAddFolder: (parentFolderId?: string) => void;
   onEditSection: () => void;
   onDeleteSection: () => void;
   onReorderItems?: (sectionId: string, itemIds: string[], parentFolderId?: string) => void;
@@ -167,8 +167,8 @@ export default function ShortcutSection({
                                     onDeleteShortcut(itemId);
                                   }
                                 }}
-                                onAddFolder={onAddFolder}
-                                onAddShortcut={onAddShortcut}
+                                onAddFolder={(_sectionId, parentFolderId) => onAddFolder(parentFolderId)}
+                                onAddShortcut={(_sectionId, parentFolderId) => onAddShortcut(parentFolderId)}
                                 onReorderItems={onReorderItems}
                                 onMoveItem={onMoveItem}
                               />

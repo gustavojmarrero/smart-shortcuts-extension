@@ -462,14 +462,14 @@ export default function App() {
               onDeleteShortcut={(shortcutId) =>
                 handleDeleteShortcut(section.id, shortcutId)
               }
-              onAddShortcut={() => handleAddShortcut(section.id)}
+              onAddShortcut={(parentFolderId) => handleAddShortcut(section.id, parentFolderId)}
               onEditFolder={(folder) =>
                 setModal({ type: 'folder', sectionId: section.id, folder })
               }
               onDeleteFolder={(folderId) =>
                 handleDeleteFolder(section.id, folderId)
               }
-              onAddFolder={() => handleAddFolder(section.id)}
+              onAddFolder={(parentFolderId) => handleAddFolder(section.id, parentFolderId)}
               onEditSection={() => setModal({ type: 'section', section })}
               onDeleteSection={() => handleDeleteSection(section.id)}
               onReorderItems={async (sectionId, itemIds, parentFolderId) => {
