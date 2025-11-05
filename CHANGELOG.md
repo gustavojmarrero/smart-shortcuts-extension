@@ -34,6 +34,11 @@
 - ✅ **Gestión completa de carpetas**: CRUD completo desde la página de opciones
 - ✅ **Indentación visual**: Estructura clara de 20px por nivel
 - ✅ **Botones contextuales**: Acciones rápidas en cada folder/shortcut
+- ✅ **Drag & Drop completo**: Arrastrar y soltar items entre secciones y carpetas directamente en Options
+
+#### 🎨 Mejoras de UX en Popup
+- ✅ **Botón flotante para crear secciones**: Botón (+) circular en esquina inferior derecha
+- ✅ **Crear secciones en cualquier momento**: Ya no limitado solo a cuando no hay secciones
 
 ---
 
