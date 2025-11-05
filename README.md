@@ -147,6 +147,9 @@ npm run build
 # Crear package de release (ZIP)
 npm run package
 
+# Crear release completo en GitHub (manual)
+npm run release
+
 # Previsualizar build
 npm run preview
 
@@ -156,29 +159,39 @@ npm run lint
 
 ### 🔄 Flujo Automático de Release
 
-Este proyecto usa **Git Hooks** (Husky) para automatizar el proceso de release:
+Este proyecto usa **Git Hooks** (Husky) + **GitHub CLI** para automatizar completamente el proceso de release:
 
 #### Cada vez que haces commit:
 1. **Pre-commit**: Compila automáticamente la extensión
-2. **Post-commit**: Crea el archivo ZIP en `releases/`
+2. **Post-commit**:
+   - Crea el archivo ZIP en `releases/`
+   - **Crea automáticamente el release en GitHub** 🎉
+   - Sube el ZIP al release
 
 ```bash
 # Simplemente haz commit como siempre:
 git add .
 git commit -m "feat: nueva funcionalidad"
+git push
 
 # El sistema automáticamente:
 # ✅ Compila la extensión (npm run build)
-# ✅ Crea el ZIP actualizado (smart-shortcuts-vX.X.X.zip)
+# ✅ Crea el ZIP (smart-shortcuts-vX.X.X.zip)
+# ✅ Crea release en GitHub con el ZIP adjunto
+# ✅ Extrae notas del CHANGELOG
 ```
 
-#### Publicar Release en GitHub:
-1. El ZIP ya está creado en `releases/`
-2. Ve a GitHub → Releases → Create new release
-3. Sube el ZIP generado
-4. Publica
+#### Requisitos:
+- **GitHub CLI** (`gh`) instalado y autenticado
+- Si no existe un release para la versión actual, se crea automáticamente
+- Si ya existe, se omite (no duplica releases)
 
-**Nota**: Los archivos ZIP se excluyen del repositorio (.gitignore) y se suben manualmente a GitHub Releases.
+#### Crear release manual:
+```bash
+npm run release
+```
+
+**Nota**: Los archivos ZIP se excluyen del repositorio (.gitignore) y se suben automáticamente a GitHub Releases.
 
 ### Estructura del proyecto
 

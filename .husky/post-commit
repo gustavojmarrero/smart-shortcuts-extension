@@ -4,5 +4,7 @@
 echo "📦 Creating release package..."
 node scripts/package-release.cjs
 
-echo "✅ Release package ready in releases/ directory!"
-echo "💡 Don't forget to create a GitHub Release with the ZIP file"
+echo "🚀 Creating GitHub Release..."
+node scripts/create-github-release.cjs
+
+echo "✅ All done!"
