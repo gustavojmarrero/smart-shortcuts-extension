@@ -111,6 +111,9 @@ sections: [{
 - ✅ **Búsqueda en carpetas**: Encuentra shortcuts dentro de carpetas anidadas
 - ✅ **Drag & drop global**: Ahora permite mover items entre diferentes contenedores
 - ✅ **Performance**: Optimizada búsqueda recursiva para estructuras grandes
+- ✅ **Parsing de droppableId**: Corregido split para soportar UUIDs con guiones en los IDs de carpetas/secciones (fix crítico: "Source section not found")
+- ✅ **Drag & drop en secciones colapsadas**: Ahora se puede arrastrar items a secciones/carpetas colapsadas correctamente
+- ✅ **MinHeight en áreas droppable**: Mantiene altura mínima para facilitar el drop incluso cuando las carpetas están colapsadas
 
 ---
 
