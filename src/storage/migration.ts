@@ -15,26 +15,27 @@ export function migrateToV2_1(oldConfig: any): ShortcutConfig {
     };
   }
 
-  // Check if already migrated
-  if (oldConfig.version === '2.1.0') {
+  // Check if already migrated (has items and version 2.1.0)
+  const hasItems = oldConfig.sections.every((s: any) => 'items' in s);
+  if (oldConfig.version === '2.1.0' && hasItems) {
     return oldConfig;
   }
 
   // Migrate sections
   const migratedSections: Section[] = oldConfig.sections.map((section: any) => {
     // If section has 'shortcuts', migrate to 'items'
-    if ('shortcuts' in section) {
+    if ('shortcuts' in section && !('items' in section)) {
+      const { shortcuts, ...rest } = section;
       return {
-        ...section,
-        items: section.shortcuts || [],
-        // Remove old 'shortcuts' property
-        shortcuts: undefined,
+        ...rest,
+        items: shortcuts || [],
       };
     }
     // Already has 'items'
     return section;
   });
 
+  console.log('🔄 Migrating config to v2.1.0');
   return {
     sections: migratedSections,
     version: '2.1.0',
@@ -47,11 +48,15 @@ export function migrateToV2_1(oldConfig: any): ShortcutConfig {
  */
 export function needsMigration(config: any): boolean {
   if (!config) return false;
-  if (config.version === '2.1.0') return false;
 
-  // Check if any section has old 'shortcuts' property
+  // Check if version is not 2.1.0
+  if (config.version !== '2.1.0') return true;
+
+  // Check if any section has old 'shortcuts' property instead of 'items'
   if (config.sections && Array.isArray(config.sections)) {
-    return config.sections.some((section: any) => 'shortcuts' in section);
+    return config.sections.some((section: any) =>
+      'shortcuts' in section && !('items' in section)
+    );
   }
 
   return false;

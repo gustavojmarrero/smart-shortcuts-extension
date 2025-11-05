@@ -15,8 +15,10 @@ export async function loadConfig(): Promise<ShortcutConfig> {
     // Apply migration if needed
     const { migrateToV2_1, needsMigration } = await import('./migration');
     if (needsMigration(config)) {
+      console.log('⚠️ Config needs migration, migrating now...');
       const migratedConfig = migrateToV2_1(config);
       await saveConfig(migratedConfig);
+      console.log('✅ Config migrated successfully');
       return migratedConfig;
     }
 
