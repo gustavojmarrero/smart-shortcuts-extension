@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Smart Shortcuts",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "Accesos directos inteligentes más rápidos que favoritos",
   "permissions": [
     "storage",
