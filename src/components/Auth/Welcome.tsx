@@ -7,23 +7,23 @@ import LoginButton from './LoginButton';
  */
 export default function Welcome() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+    <div className="w-[380px] h-[600px] flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="w-full bg-white rounded-xl shadow-lg p-6">
         {/* Logo/Título */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-            <Zap className="w-8 h-8 text-blue-600" />
+        <div className="text-center mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-full mb-3">
+            <Zap className="w-7 h-7 text-blue-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-xl font-bold text-gray-900 mb-1">
             Smart Shortcuts
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm text-gray-600">
             Sincroniza tus atajos en todos tus dispositivos
           </p>
         </div>
 
         {/* Beneficios */}
-        <div className="space-y-4 mb-8">
+        <div className="space-y-3 mb-6">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
               <Cloud className="w-5 h-5 text-blue-600" />
@@ -68,12 +68,12 @@ export default function Welcome() {
         </div>
 
         {/* Botón de login */}
-        <div className="mb-4">
+        <div className="mb-3">
           <LoginButton />
         </div>
 
         {/* Nota adicional */}
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-[10px] text-gray-500 text-center">
           Al continuar, aceptas que tus atajos se sincronicen en la nube
         </p>
       </div>

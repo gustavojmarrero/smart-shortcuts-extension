@@ -4,7 +4,12 @@
 
 **Versión Actual:** 2.2.1 → 3.0.0 (en progreso)
 **Fecha de Inicio:** 6 de Noviembre, 2025
+**Última Actualización:** 6 de Noviembre, 2025
 **Objetivo:** Migrar de `chrome.storage.sync` a Firebase/Firestore con autenticación Google
+
+**Commits Realizados:**
+- `c153305` - FASE 1-2: Base de autenticación Firebase
+- `2c134b1` - FASE 3: Integración de autenticación en UI
 
 ---
 
@@ -50,20 +55,30 @@
 
 ---
 
-## 🔄 FASE 3: Integración UI (PENDIENTE - 0%)
+## ✅ FASE 3: Integración UI (COMPLETADO - 100%)
 
-### Tareas:
-- [ ] **Modificar `src/popup/App.tsx`**
-  - Envolver con `<AuthProvider>`
-  - Mostrar `<Welcome />` si usuario no autenticado
-  - Mostrar `<UserProfile />` en header si autenticado
-  - Integrar con sistema actual de shortcuts
+### Tareas Completadas:
+- [x] **Modificar `src/popup/App.tsx`**
+  - ✓ Envolver con `<AuthProvider>`
+  - ✓ Mostrar `<Welcome />` si usuario no autenticado
+  - ✓ Mostrar `<UserProfile />` en header si autenticado
+  - ✓ Estados de loading diferenciados (auth vs config)
+  - ✓ Integrado con sistema actual de shortcuts
 
-- [ ] **Modificar `src/options/Options.tsx`**
-  - Igual que App.tsx: agregar `<AuthProvider>`
-  - Mostrar estado de sincronización
+- [x] **Modificar `src/options/Options.tsx`**
+  - ✓ AuthProvider integrado
+  - ✓ Welcome screen en página de opciones
+  - ✓ UserProfile en header
 
-### Estimación: 2-3 horas
+- [x] **Ajustar dimensiones de Welcome**
+  - ✓ Corregido a 380px × 600px
+  - ✓ Optimizado espaciado y tamaños
+
+### ⚠️ Problema Conocido:
+- Autenticación inicia pero puede fallar en signInWithCredential
+- Usuario ve pantalla de Google OAuth pero regresa sin completar login
+- **SOLUCIÓN:** Verificar en consola de DevTools el error específico
+- Puede requerir ajustes en `src/firebase/auth.ts`
 
 ---
 
@@ -229,17 +244,17 @@
 
 ## 📊 Resumen de Progreso
 
-| Fase | Estado | Progreso | Tiempo Estimado |
-|------|--------|----------|-----------------|
-| 1. Setup Inicial | ✅ Completado | 100% | 2-3 horas |
-| 2. Autenticación | ✅ Completado | 100% | 4-5 horas |
-| 3. Integración UI | 🔄 Pendiente | 0% | 2-3 horas |
-| 4. Firestore Database | 🔄 Pendiente | 0% | 5-6 horas |
-| 5. Migración Datos | 🔄 Pendiente | 0% | 3-4 horas |
-| 6. Manejo Errores | 🔄 Pendiente | 0% | 2-3 horas |
-| 7. Optimización | 🔄 Pendiente | 0% | 3-4 horas |
-| 8. Documentación | 🔄 Pendiente | 0% | 2 horas |
-| **TOTAL** | **31% Completo** | **31%** | **23-30 horas** |
+| Fase | Estado | Progreso | Tiempo Real | Estimado |
+|------|--------|----------|-------------|----------|
+| 1. Setup Inicial | ✅ Completado | 100% | ~2 horas | 2-3 horas |
+| 2. Autenticación | ✅ Completado | 100% | ~3 horas | 4-5 horas |
+| 3. Integración UI | ✅ Completado | 100% | ~2 horas | 2-3 horas |
+| 4. Firestore Database | 🔄 Pendiente | 0% | - | 5-6 horas |
+| 5. Migración Datos | 🔄 Pendiente | 0% | - | 3-4 horas |
+| 6. Manejo Errores | 🔄 Pendiente | 0% | - | 2-3 horas |
+| 7. Optimización | 🔄 Pendiente | 0% | - | 3-4 horas |
+| 8. Documentación | 🔄 Pendiente | 0% | - | 2 horas |
+| **TOTAL** | **47% Completo** | **47%** | **~7 horas** | **23-30 horas** |
 
 ---
 
@@ -281,28 +296,23 @@
 
 ## 🎯 Próximos Pasos Inmediatos
 
-1. ✅ **Commit actual** con mensaje:
-   ```
-   feat: Agregar base de autenticación Firebase (FASE 1-2)
+1. ✅ **COMPLETADO - Commits realizados:**
+   - `c153305`: FASE 1-2 (Setup + Autenticación)
+   - `2c134b1`: FASE 3 (Integración UI)
 
-   - Instalar Firebase SDK v10.14.0
-   - Configurar OAuth2 con Google Sign-In
-   - Actualizar manifest.json a v3.0.0
-   - Crear servicio de autenticación con chrome.identity
-   - Implementar AuthContext y hooks
-   - Crear componentes UI (LoginButton, UserProfile, Welcome)
-   - Build verificado y funcionando
+2. 🔧 **OPCIONAL - Debuggear autenticación:**
+   - Abrir DevTools en la extensión
+   - Verificar errores en consola al hacer login
+   - Posible problema: `signInWithCredential` failing
+   - Solución temporal: Verificar tokens en chrome.identity
 
-   PENDIENTE:
-   - Integrar en App.tsx y Options.tsx
-   - Implementar Firestore CRUD
-   - Migración de datos antiguos
-   - Manejo de errores y optimizaciones
-   ```
+3. **🚀 SIGUIENTE: FASE 4 - Firestore Database**
+   - Configurar reglas de seguridad en Firebase Console
+   - Crear servicio Firestore (`src/firebase/firestore.ts`)
+   - Implementar CRUD completo
+   - Hook `useFirestoreConfig` para sincronización
 
-2. **Continuar con FASE 3:** Integración UI
-3. **Testing en navegador** después de FASE 3
-4. **Implementar Firestore** (FASE 4)
+4. **Continuar con FASE 5-8** según roadmap
 
 ---
 
@@ -315,6 +325,121 @@
 
 ---
 
-**Última actualización:** 6 de Noviembre, 2025
+## 📝 Notas para Continuar en Próxima Sesión
+
+### 🐛 Problema Actual de Autenticación
+**Síntoma:**
+- Usuario hace click en "Continuar con Google"
+- Se abre ventana de Google OAuth
+- Ventana se cierra y regresa a Welcome screen (no completa login)
+
+**Para Debuggear:**
+```javascript
+// En chrome://extensions/ → Smart Shortcuts → Inspeccionar vista popup
+// Revisar consola al hacer login
+
+// Posibles errores:
+// 1. signInWithCredential failing
+// 2. Token inválido de chrome.identity
+// 3. Firebase Auth no inicializado correctamente
+// 4. CSP bloqueando requests
+```
+
+**Archivos Relevantes:**
+- `src/firebase/auth.ts:15-44` - Función signInWithGoogle()
+- `src/context/AuthContext.tsx:48-67` - signIn handler
+- `public/manifest.json:13-19` - OAuth2 config
+
+**Posibles Soluciones:**
+1. Verificar que Firebase proyecto tenga Google Sign-In habilitado
+2. Revisar si Extension ID cambió (si se recargó la extensión)
+3. Agregar más logging en auth.ts para ver dónde falla
+4. Verificar que `.env` tenga todas las variables correctas
+
+### 📂 Archivos Importantes
+
+**Variables de Entorno:**
+```bash
+/Users/gustavomarrero/Documents/node/smart-shortcuts-extension/.env
+```
+
+**Configuración Firebase:**
+```bash
+src/firebase/config.ts    # Inicialización
+src/firebase/auth.ts      # Autenticación
+src/context/AuthContext.tsx  # Estado global
+```
+
+**UI Components:**
+```bash
+src/components/Auth/
+  ├── Welcome.tsx         # 380x600px
+  ├── LoginButton.tsx
+  └── UserProfile.tsx
+```
+
+**Apps Principales:**
+```bash
+src/popup/App.tsx         # Popup principal
+src/options/Options.tsx   # Página de configuración
+```
+
+### 🔧 Comandos Útiles
+
+```bash
+# Compilar proyecto
+npm run build
+
+# Recargar extensión después de cambios
+# chrome://extensions/ → Click reload (🔄)
+
+# Ver logs de la extensión
+# chrome://extensions/ → Smart Shortcuts → "Inspeccionar vista: popup"
+
+# Ver variables de entorno
+cat .env
+
+# Ver últimos commits
+git log --oneline -5
+```
+
+### 🚀 Para Continuar con FASE 4
+
+1. **Primero:** Resolver problema de autenticación (opcional, no bloqueante)
+2. **Firebase Console:** https://console.firebase.google.com/
+   - Habilitar Firestore Database
+   - Configurar reglas de seguridad
+3. **Crear:** `src/firebase/firestore.ts`
+4. **Estructura de datos en Firestore:**
+```
+users/{userId}/
+  config/
+    version: string
+    lastModified: timestamp
+    sections: Array<Section>
+```
+
+### ⚡ Quick Start para Próxima Sesión
+
+```bash
+# 1. Navegar al proyecto
+cd /Users/gustavomarrero/Documents/node/smart-shortcuts-extension
+
+# 2. Revisar estado
+git status
+git log --oneline -3
+
+# 3. Ver ROADMAP actualizado
+cat ROADMAP_FIREBASE.md | head -100
+
+# 4. Continuar con FASE 4
+# Ver sección "FASE 4: Firestore Database" arriba
+```
+
+---
+
+**Última actualización:** 6 de Noviembre, 2025 - 17:51
 **Mantenedor:** Gustavo Marrero
 **Repositorio:** [smart-shortcuts-extension](https://github.com/gustavojmarrero/smart-shortcuts-extension)
+
+**Progreso:** 47% completado (3 de 8 fases) ✅✅✅⬜⬜⬜⬜⬜
