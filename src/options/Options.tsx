@@ -16,6 +16,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import Welcome from '../components/Auth/Welcome';
 import UserProfile from '../components/Auth/UserProfile';
+import { useFirestoreConfig } from '../hooks/useFirestoreConfig';
 import {
   loadConfig,
   addSection,
@@ -33,6 +34,20 @@ import {
   reorderItems,
   moveItem,
 } from '../storage/config';
+import {
+  addSectionToConfig,
+  updateSectionInConfig,
+  deleteSectionFromConfig,
+  addShortcutToConfig,
+  updateShortcutInConfig,
+  deleteShortcutFromConfig,
+  addFolderToConfig,
+  updateFolderInConfig,
+  deleteFolderFromConfig,
+  reorderSectionsInConfig,
+  reorderItemsInConfig,
+  moveItemInConfig,
+} from '../storage/firestore-operations';
 import type { ShortcutConfig, Section, Shortcut, Folder, Item } from '../storage/types';
 import { EditShortcutModal, EditSectionModal, EditFolderModal } from '../popup/components/EditModal';
 import { isShortcut, isFolder } from '../storage/types';
@@ -44,19 +59,38 @@ type ModalState =
   | { type: 'folder'; sectionId: string; folder?: Folder; parentFolderId?: string };
 
 function OptionsContent() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const {
+    config: firestoreConfig,
+    loading: firestoreLoading,
+    saveConfig: saveToFirestore,
+  } = useFirestoreConfig(user);
+
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
+  // Sync Firestore config to local state
   useEffect(() => {
-    loadConfig().then((cfg) => {
-      setConfig(cfg);
-      // Expand all sections by default
-      setExpandedSections(new Set(cfg.sections.map((s) => s.id)));
-    });
-  }, []);
+    if (user && firestoreConfig) {
+      setConfig(firestoreConfig);
+      // NO expandir todas las secciones automáticamente (mejor UX)
+      // Solo expandir la primera sección si es necesario
+      // setExpandedSections(new Set(firestoreConfig.sections.map((s) => s.id)));
+    }
+  }, [user, firestoreConfig]);
+
+  // Load config for non-authenticated users
+  useEffect(() => {
+    if (!user && !authLoading) {
+      loadConfig().then((cfg) => {
+        setConfig(cfg);
+        // NO expandir todas las secciones
+        // setExpandedSections(new Set(cfg.sections.map((s) => s.id)));
+      });
+    }
+  }, [user, authLoading]);
 
   const handleExport = async () => {
     const json = await exportConfig();
@@ -92,56 +126,131 @@ function OptionsContent() {
 
   const handleSaveSection = async (data: Partial<Section>) => {
     if (modal.type === 'section') {
-      if (modal.section) {
-        await updateSection(modal.section.id, data);
-      } else {
-        await addSection({
-          name: data.name!,
-          icon: data.icon,
-          items: [],
-        });
+      try {
+        if (user && saveToFirestore && config) {
+          // Usuario autenticado: Firestore
+          let updatedConfig: ShortcutConfig;
+
+          if (modal.section) {
+            updatedConfig = updateSectionInConfig(config, modal.section.id, data);
+          } else {
+            const result = addSectionToConfig(config, {
+              name: data.name!,
+              icon: data.icon,
+            });
+            updatedConfig = result.config;
+          }
+
+          setConfig(updatedConfig);
+          await saveToFirestore(updatedConfig);
+          console.log('✅ [OPTIONS] Sección guardada en Firestore');
+        } else {
+          // Usuario no autenticado: chrome.storage.sync
+          if (modal.section) {
+            await updateSection(modal.section.id, data);
+          } else {
+            await addSection({
+              name: data.name!,
+              icon: data.icon,
+              items: [],
+            });
+          }
+          const updated = await loadConfig();
+          setConfig(updated);
+          console.log('✅ [OPTIONS] Sección guardada en chrome.storage');
+        }
+      } catch (error) {
+        console.error('❌ [OPTIONS] Error guardando sección:', error);
+        alert('Error al guardar la sección. Por favor intenta de nuevo.');
+      } finally {
+        // SIEMPRE cerrar el modal, incluso si hay error
+        setModal({ type: 'none' });
       }
-      const updated = await loadConfig();
-      setConfig(updated);
-      setModal({ type: 'none' });
     }
   };
 
   const handleDeleteSection = async (sectionId: string) => {
     if (confirm('¿Seguro que quieres eliminar esta sección y todos sus shortcuts?')) {
-      await deleteSection(sectionId);
-      const updated = await loadConfig();
-      setConfig(updated);
+      if (user && saveToFirestore && config) {
+        const updatedConfig = deleteSectionFromConfig(config, sectionId);
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await deleteSection(sectionId);
+        const updated = await loadConfig();
+        setConfig(updated);
+      }
     }
   };
 
   const handleSaveShortcut = async (data: Partial<Shortcut>) => {
     if (modal.type === 'shortcut') {
-      if (modal.shortcut) {
-        await updateShortcut(modal.sectionId, modal.shortcut.id, data);
-      } else {
-        await addShortcut(modal.sectionId, {
-          type: data.type!,
-          label: data.label!,
-          url: data.url,
-          urlTemplate: data.urlTemplate,
-          placeholder: data.placeholder,
-          icon: data.icon,
-          description: data.description,
-          inputType: data.inputType,
-        });
+      try {
+        if (user && saveToFirestore && config) {
+          let updatedConfig: ShortcutConfig;
+
+          if (modal.shortcut) {
+            updatedConfig = updateShortcutInConfig(config, modal.sectionId, modal.shortcut.id, data);
+          } else {
+            updatedConfig = addShortcutToConfig(
+              config,
+              modal.sectionId,
+              {
+                type: data.type!,
+                label: data.label!,
+                url: data.url,
+                urlTemplate: data.urlTemplate,
+                placeholder: data.placeholder,
+                icon: data.icon,
+                description: data.description,
+                inputType: data.inputType,
+                validationRegex: data.validationRegex,
+                validationMessage: data.validationMessage,
+              },
+              modal.parentFolderId
+            );
+          }
+
+          setConfig(updatedConfig);
+          await saveToFirestore(updatedConfig);
+        } else {
+          if (modal.shortcut) {
+            await updateShortcut(modal.sectionId, modal.shortcut.id, data);
+          } else {
+            await addShortcut(modal.sectionId, {
+              type: data.type!,
+              label: data.label!,
+              url: data.url,
+              urlTemplate: data.urlTemplate,
+              placeholder: data.placeholder,
+              icon: data.icon,
+              description: data.description,
+              inputType: data.inputType,
+            });
+          }
+          const updated = await loadConfig();
+          setConfig(updated);
+        }
+      } catch (error) {
+        console.error('❌ [OPTIONS] Error guardando shortcut:', error);
+        alert('Error al guardar el shortcut. Por favor intenta de nuevo.');
+      } finally {
+        setModal({ type: 'none' });
       }
-      const updated = await loadConfig();
-      setConfig(updated);
-      setModal({ type: 'none' });
     }
   };
 
   const handleDeleteShortcut = async (sectionId: string, shortcutId: string) => {
     if (confirm('¿Seguro que quieres eliminar este shortcut?')) {
-      await deleteShortcut(sectionId, shortcutId);
-      const updated = await loadConfig();
-      setConfig(updated);
+      if (user && saveToFirestore && config) {
+        const updatedConfig = deleteShortcutFromConfig(config, sectionId, shortcutId);
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await deleteShortcut(sectionId, shortcutId);
+        const updated = await loadConfig();
+        setConfig(updated);
+      }
     }
   };
 
@@ -165,32 +274,75 @@ function OptionsContent() {
     setExpandedFolders(newExpanded);
   };
 
+  const expandAllSections = () => {
+    if (config) {
+      setExpandedSections(new Set(config.sections.map((s) => s.id)));
+    }
+  };
+
+  const collapseAllSections = () => {
+    setExpandedSections(new Set());
+  };
+
   const handleSaveFolder = async (data: Partial<Folder>) => {
     if (modal.type === 'folder') {
-      if (modal.folder) {
-        await updateFolder(modal.sectionId, modal.folder.id, data);
-      } else {
-        await addFolder(
-          modal.sectionId,
-          {
-            name: data.name!,
-            icon: data.icon,
-            items: [],
-          },
-          modal.parentFolderId
-        );
+      try {
+        if (user && saveToFirestore && config) {
+          let updatedConfig: ShortcutConfig;
+
+          if (modal.folder) {
+            updatedConfig = updateFolderInConfig(config, modal.sectionId, modal.folder.id, data);
+          } else {
+            updatedConfig = addFolderToConfig(
+              config,
+              modal.sectionId,
+              {
+                name: data.name!,
+                icon: data.icon,
+              },
+              modal.parentFolderId
+            );
+          }
+
+          setConfig(updatedConfig);
+          await saveToFirestore(updatedConfig);
+        } else {
+          if (modal.folder) {
+            await updateFolder(modal.sectionId, modal.folder.id, data);
+          } else {
+            await addFolder(
+              modal.sectionId,
+              {
+                name: data.name!,
+                icon: data.icon,
+                items: [],
+              },
+              modal.parentFolderId
+            );
+          }
+          const updated = await loadConfig();
+          setConfig(updated);
+        }
+      } catch (error) {
+        console.error('❌ [OPTIONS] Error guardando carpeta:', error);
+        alert('Error al guardar la carpeta. Por favor intenta de nuevo.');
+      } finally {
+        setModal({ type: 'none' });
       }
-      const updated = await loadConfig();
-      setConfig(updated);
-      setModal({ type: 'none' });
     }
   };
 
   const handleDeleteFolder = async (sectionId: string, folderId: string) => {
     if (confirm('¿Seguro que quieres eliminar esta carpeta y todo su contenido?')) {
-      await deleteFolder(sectionId, folderId);
-      const updated = await loadConfig();
-      setConfig(updated);
+      if (user && saveToFirestore && config) {
+        const updatedConfig = deleteFolderFromConfig(config, sectionId, folderId);
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await deleteFolder(sectionId, folderId);
+        const updated = await loadConfig();
+        setConfig(updated);
+      }
     }
   };
 
@@ -199,9 +351,16 @@ function OptionsContent() {
     const sorted = [...config.sections].sort((a, b) => a.order - b.order);
     const newOrder = [...sorted];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-    await reorderSections(newOrder.map((s) => s.id));
-    const updated = await loadConfig();
-    setConfig(updated);
+
+    if (user && saveToFirestore) {
+      const updatedConfig = reorderSectionsInConfig(config, newOrder.map((s) => s.id));
+      setConfig(updatedConfig);
+      await saveToFirestore(updatedConfig);
+    } else {
+      await reorderSections(newOrder.map((s) => s.id));
+      const updated = await loadConfig();
+      setConfig(updated);
+    }
   };
 
   const moveSectionDown = async (index: number) => {
@@ -209,9 +368,16 @@ function OptionsContent() {
     const sorted = [...config.sections].sort((a, b) => a.order - b.order);
     const newOrder = [...sorted];
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    await reorderSections(newOrder.map((s) => s.id));
-    const updated = await loadConfig();
-    setConfig(updated);
+
+    if (user && saveToFirestore) {
+      const updatedConfig = reorderSectionsInConfig(config, newOrder.map((s) => s.id));
+      setConfig(updatedConfig);
+      await saveToFirestore(updatedConfig);
+    } else {
+      await reorderSections(newOrder.map((s) => s.id));
+      const updated = await loadConfig();
+      setConfig(updated);
+    }
   };
 
   // Componente recursivo para renderizar items (shortcuts y folders)
@@ -450,26 +616,51 @@ function OptionsContent() {
       const [removed] = reordered.splice(source.index, 1);
       reordered.splice(destination.index, 0, removed);
 
-      await reorderItems(
-        sourceSectionId,
-        reordered.map(item => item.id),
-        sourceType === 'folder' ? sourceId : undefined
-      );
+      if (user && saveToFirestore && config) {
+        const updatedConfig = reorderItemsInConfig(
+          config,
+          sourceSectionId,
+          reordered.map(item => item.id),
+          sourceType === 'folder' ? sourceId : undefined
+        );
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await reorderItems(
+          sourceSectionId,
+          reordered.map(item => item.id),
+          sourceType === 'folder' ? sourceId : undefined
+        );
+        const updated = await loadConfig();
+        setConfig(updated);
+      }
     } else {
       // Different containers - move item
-      await moveItem(
-        draggableId,
-        sourceSectionId,
-        destSectionId,
-        sourceType === 'folder' ? sourceId : undefined,
-        destType === 'folder' ? destId : undefined,
-        destination.index
-      );
+      if (user && saveToFirestore && config) {
+        const updatedConfig = moveItemInConfig(
+          config,
+          draggableId,
+          sourceSectionId,
+          destSectionId,
+          sourceType === 'folder' ? sourceId : undefined,
+          destType === 'folder' ? destId : undefined,
+          destination.index
+        );
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await moveItem(
+          draggableId,
+          sourceSectionId,
+          destSectionId,
+          sourceType === 'folder' ? sourceId : undefined,
+          destType === 'folder' ? destId : undefined,
+          destination.index
+        );
+        const updated = await loadConfig();
+        setConfig(updated);
+      }
     }
-
-    // Reload config
-    const updated = await loadConfig();
-    setConfig(updated);
   };
 
   // Helper: find which section contains a folder
@@ -507,10 +698,12 @@ function OptionsContent() {
   };
 
   // Mostrar loading mientras se verifica autenticación
-  if (loading) {
+  if (authLoading || (user && firestoreLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-text-secondary">Cargando...</div>
+        <div className="text-text-secondary">
+          {authLoading ? 'Verificando autenticación...' : 'Cargando configuración...'}
+        </div>
       </div>
     );
   }
@@ -625,7 +818,32 @@ function OptionsContent() {
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <>
+            {/* Botones de Expandir/Colapsar Todo */}
+            <div className="flex justify-end gap-2 mb-4">
+              <button
+                onClick={expandAllSections}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-hover transition-smooth"
+                title="Expandir todas las secciones"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Expandir Todo
+              </button>
+              <button
+                onClick={collapseAllSections}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-hover transition-smooth"
+                title="Colapsar todas las secciones"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                Colapsar Todo
+              </button>
+            </div>
+
+            <div className="space-y-4">
             {sortedSections.map((section, sectionIndex) => {
               const isExpanded = expandedSections.has(section.id);
 
@@ -739,6 +957,7 @@ function OptionsContent() {
               );
             })}
           </div>
+          </>
         )}
       </main>
 

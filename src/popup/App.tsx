@@ -12,6 +12,8 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import Welcome from '../components/Auth/Welcome';
 import UserProfile from '../components/Auth/UserProfile';
 import { useFirestoreConfig } from '../hooks/useFirestoreConfig';
+import { useMigration } from '../hooks/useMigration';
+import MigrationPrompt from '../components/Migration/MigrationPrompt';
 import {
   loadConfig,
   addSection,
@@ -27,6 +29,20 @@ import {
   moveItem,
   reorderSections,
 } from '../storage/config';
+import {
+  addSectionToConfig,
+  updateSectionInConfig,
+  deleteSectionFromConfig,
+  addShortcutToConfig,
+  updateShortcutInConfig,
+  deleteShortcutFromConfig,
+  addFolderToConfig,
+  updateFolderInConfig,
+  deleteFolderFromConfig,
+  reorderSectionsInConfig,
+  reorderItemsInConfig,
+  moveItemInConfig,
+} from '../storage/firestore-operations';
 import { filterSections } from '../utils/searchUtils';
 import type { ShortcutConfig, Section, Shortcut, Folder } from '../storage/types';
 
@@ -47,13 +63,16 @@ function AppContent() {
     saveConfig: saveToFirestore,
   } = useFirestoreConfig(user);
 
+  // Hook de migración
+  const migration = useMigration(
+    user?.uid || null,
+    hasFirestoreConfig,
+    saveToFirestore
+  );
+
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Usar sessionStorage para recordar que ya migramos (persiste entre recargas de popup)
-  const getMigrationFlag = () => sessionStorage.getItem('migration_attempted') === 'true';
-  const setMigrationFlag = () => sessionStorage.setItem('migration_attempted', 'true');
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
     // Cargar desde localStorage
@@ -92,17 +111,16 @@ function AppContent() {
         // Usuario autenticado: esperar a que useFirestoreConfig cargue
         console.log('👤 Usuario autenticado, usando Firestore');
 
-        if (!firestoreLoading && !firestoreConfig && !hasFirestoreConfig && !getMigrationFlag()) {
-          // Usuario nuevo o primera vez: intentar migrar desde chrome.storage (SOLO UNA VEZ)
-          console.log('⚠️ Usuario sin config en Firestore, intentando migrar desde chrome.storage');
-          setMigrationFlag(); // Marcar que ya intentamos migrar
-
+        // Si no hay config en Firestore y no está cargando
+        // El hook useMigration se encargará de mostrar el prompt si hay datos locales
+        if (!firestoreLoading && !firestoreConfig && !hasFirestoreConfig) {
+          // Cargar config default para mostrar algo mientras el usuario decide migrar
           const localConfig = await loadConfig();
 
+          // Si el usuario ya tiene datos locales, usarlos temporalmente
+          // El hook useMigration mostrará el prompt para migrar
           if (localConfig.sections.length > 0) {
-            // Hay datos locales, migrar a Firestore
-            console.log('📤 Migrando config local a Firestore');
-            await saveToFirestore(localConfig);
+            console.log('📋 Datos locales encontrados, esperando decisión de migración');
             setConfig(localConfig);
           } else {
             // Usuario completamente nuevo
@@ -115,7 +133,6 @@ function AppContent() {
         console.log('🔓 Usuario no autenticado, usando chrome.storage');
         const localConfig = await loadConfig();
         setConfig(localConfig);
-        sessionStorage.removeItem('migration_attempted'); // Reset para cuando vuelva a autenticarse
       }
     }
 
@@ -159,32 +176,70 @@ function AppContent() {
 
   const handleSaveSection = async (data: Partial<Section>) => {
     if (modal.type === 'section') {
-      if (modal.section) {
-        await updateSection(modal.section.id, data);
-      } else {
-        const newSection = await addSection({
-          name: data.name!,
-          icon: data.icon,
-          items: [],
-        });
+      if (user && saveToFirestore && config) {
+        // Usuario autenticado: guardar directamente en Firestore
+        let updatedConfig: ShortcutConfig;
+        let newSectionId: string | null = null;
+
+        if (modal.section) {
+          // Actualizar sección existente
+          updatedConfig = updateSectionInConfig(config, modal.section.id, data);
+        } else {
+          // Crear nueva sección
+          const result = addSectionToConfig(config, {
+            name: data.name!,
+            icon: data.icon,
+          });
+          updatedConfig = result.config;
+          newSectionId = result.newSection.id;
+        }
+
+        // Optimistic update: actualizar UI inmediatamente
+        setConfig(updatedConfig);
+
+        // Guardar en Firestore
+        await saveToFirestore(updatedConfig);
+
         // Auto-expandir nueva sección
-        setExpandedSections((prev) => new Set([...prev, newSection.id]));
+        if (newSectionId) {
+          setExpandedSections((prev) => new Set([...prev, newSectionId!]));
+        }
+      } else {
+        // Usuario no autenticado: usar chrome.storage.sync (legacy)
+        if (modal.section) {
+          await updateSection(modal.section.id, data);
+        } else {
+          const newSection = await addSection({
+            name: data.name!,
+            icon: data.icon,
+            items: [],
+          });
+          setExpandedSections((prev) => new Set([...prev, newSection.id]));
+        }
+        await reloadAndSync();
       }
-      await reloadAndSync();
       setModal({ type: 'none' });
     }
   };
 
   const handleDeleteSection = async (sectionId: string) => {
     if (confirm('¿Seguro que quieres eliminar esta sección?')) {
-      await deleteSection(sectionId);
+      if (user && saveToFirestore && config) {
+        // Usuario autenticado: Firestore
+        const updatedConfig = deleteSectionFromConfig(config, sectionId);
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        // Usuario no autenticado: chrome.storage.sync
+        await deleteSection(sectionId);
+        await reloadAndSync();
+      }
       // Remover de expandedSections
       setExpandedSections((prev) => {
         const next = new Set(prev);
         next.delete(sectionId);
         return next;
       });
-      await reloadAndSync();
     }
   };
 
@@ -194,31 +249,68 @@ function AppContent() {
 
   const handleSaveShortcut = async (data: Partial<Shortcut>) => {
     if (modal.type === 'shortcut') {
-      if (modal.shortcut) {
-        await updateShortcut(modal.sectionId, modal.shortcut.id, data);
+      if (user && saveToFirestore && config) {
+        // Usuario autenticado: Firestore
+        let updatedConfig: ShortcutConfig;
+
+        if (modal.shortcut) {
+          updatedConfig = updateShortcutInConfig(config, modal.sectionId, modal.shortcut.id, data);
+        } else {
+          updatedConfig = addShortcutToConfig(
+            config,
+            modal.sectionId,
+            {
+              type: data.type!,
+              label: data.label!,
+              url: data.url,
+              urlTemplate: data.urlTemplate,
+              placeholder: data.placeholder,
+              icon: data.icon,
+              description: data.description,
+              inputType: data.inputType,
+              validationRegex: data.validationRegex,
+              validationMessage: data.validationMessage,
+            },
+            modal.parentFolderId
+          );
+        }
+
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
       } else {
-        await addShortcut(modal.sectionId, {
-          type: data.type!,
-          label: data.label!,
-          url: data.url,
-          urlTemplate: data.urlTemplate,
-          placeholder: data.placeholder,
-          icon: data.icon,
-          description: data.description,
-          inputType: data.inputType,
-          validationRegex: data.validationRegex,
-          validationMessage: data.validationMessage,
-        }, modal.parentFolderId);
+        // Usuario no autenticado: chrome.storage.sync
+        if (modal.shortcut) {
+          await updateShortcut(modal.sectionId, modal.shortcut.id, data);
+        } else {
+          await addShortcut(modal.sectionId, {
+            type: data.type!,
+            label: data.label!,
+            url: data.url,
+            urlTemplate: data.urlTemplate,
+            placeholder: data.placeholder,
+            icon: data.icon,
+            description: data.description,
+            inputType: data.inputType,
+            validationRegex: data.validationRegex,
+            validationMessage: data.validationMessage,
+          }, modal.parentFolderId);
+        }
+        await reloadAndSync();
       }
-      await reloadAndSync();
       setModal({ type: 'none' });
     }
   };
 
   const handleDeleteShortcut = async (sectionId: string, shortcutId: string) => {
     if (confirm('¿Seguro que quieres eliminar este shortcut?')) {
-      await deleteShortcut(sectionId, shortcutId);
-      await reloadAndSync();
+      if (user && saveToFirestore && config) {
+        const updatedConfig = deleteShortcutFromConfig(config, sectionId, shortcutId);
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await deleteShortcut(sectionId, shortcutId);
+        await reloadAndSync();
+      }
     }
   };
 
@@ -228,24 +320,51 @@ function AppContent() {
 
   const handleSaveFolder = async (data: Partial<Folder>) => {
     if (modal.type === 'folder') {
-      if (modal.folder) {
-        await updateFolder(modal.sectionId, modal.folder.id, data);
+      if (user && saveToFirestore && config) {
+        let updatedConfig: ShortcutConfig;
+
+        if (modal.folder) {
+          updatedConfig = updateFolderInConfig(config, modal.sectionId, modal.folder.id, data);
+        } else {
+          updatedConfig = addFolderToConfig(
+            config,
+            modal.sectionId,
+            {
+              name: data.name!,
+              icon: data.icon,
+            },
+            modal.parentFolderId
+          );
+        }
+
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
       } else {
-        await addFolder(modal.sectionId, {
-          name: data.name!,
-          icon: data.icon,
-          items: [],
-        }, modal.parentFolderId);
+        if (modal.folder) {
+          await updateFolder(modal.sectionId, modal.folder.id, data);
+        } else {
+          await addFolder(modal.sectionId, {
+            name: data.name!,
+            icon: data.icon,
+            items: [],
+          }, modal.parentFolderId);
+        }
+        await reloadAndSync();
       }
-      await reloadAndSync();
       setModal({ type: 'none' });
     }
   };
 
   const handleDeleteFolder = async (sectionId: string, folderId: string) => {
     if (confirm('¿Seguro que quieres eliminar esta carpeta y todo su contenido?')) {
-      await deleteFolder(sectionId, folderId);
-      await reloadAndSync();
+      if (user && saveToFirestore && config) {
+        const updatedConfig = deleteFolderFromConfig(config, sectionId, folderId);
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await deleteFolder(sectionId, folderId);
+        await reloadAndSync();
+      }
     }
   };
 
@@ -375,8 +494,14 @@ function AppContent() {
       const [removed] = reordered.splice(source.index, 1);
       reordered.splice(destination.index, 0, removed);
 
-      await reorderSections(reordered.map(s => s.id));
-      await reloadAndSync();
+      if (user && saveToFirestore && config) {
+        const updatedConfig = reorderSectionsInConfig(config, reordered.map(s => s.id));
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await reorderSections(reordered.map(s => s.id));
+        await reloadAndSync();
+      }
       return;
     }
 
@@ -436,29 +561,54 @@ function AppContent() {
 
       console.log('✅ Reordering items:', reordered.map(i => i.id));
 
-      await reorderItems(
-        sourceSectionId,
-        reordered.map(item => item.id),
-        sourceType === 'folder' ? sourceId : undefined
-      );
+      if (user && saveToFirestore && config) {
+        const updatedConfig = reorderItemsInConfig(
+          config,
+          sourceSectionId,
+          reordered.map(item => item.id),
+          sourceType === 'folder' ? sourceId : undefined
+        );
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await reorderItems(
+          sourceSectionId,
+          reordered.map(item => item.id),
+          sourceType === 'folder' ? sourceId : undefined
+        );
+        await reloadAndSync();
+      }
     } else {
       // Different containers - move item
       console.log('➡️ Moving between containers');
-      await moveItem(
-        draggableId,
-        sourceSectionId,
-        destSectionId,
-        sourceType === 'folder' ? sourceId : undefined,
-        destType === 'folder' ? destId : undefined,
-        destination.index
-      );
+
+      if (user && saveToFirestore && config) {
+        const updatedConfig = moveItemInConfig(
+          config,
+          draggableId,
+          sourceSectionId,
+          destSectionId,
+          sourceType === 'folder' ? sourceId : undefined,
+          destType === 'folder' ? destId : undefined,
+          destination.index
+        );
+        setConfig(updatedConfig);
+        await saveToFirestore(updatedConfig);
+      } else {
+        await moveItem(
+          draggableId,
+          sourceSectionId,
+          destSectionId,
+          sourceType === 'folder' ? sourceId : undefined,
+          destType === 'folder' ? destId : undefined,
+          destination.index
+        );
+        await reloadAndSync();
+      }
       console.log('✅ Item moved successfully');
     }
 
-    // Reload config and sync with Firestore
-    console.log('🔄 Reloading config...');
-    await reloadAndSync();
-    console.log('✅ Config reloaded');
+    console.log('✅ Config updated');
   };
 
   // Helper: find which section contains a folder
@@ -596,12 +746,24 @@ function AppContent() {
                           onEditSection={() => setModal({ type: 'section', section })}
                           onDeleteSection={() => handleDeleteSection(section.id)}
                           onReorderItems={async (sectionId, itemIds, parentFolderId) => {
-                            await reorderItems(sectionId, itemIds, parentFolderId);
-                            await reloadAndSync();
+                            if (user && saveToFirestore && config) {
+                              const updatedConfig = reorderItemsInConfig(config, sectionId, itemIds, parentFolderId);
+                              setConfig(updatedConfig);
+                              await saveToFirestore(updatedConfig);
+                            } else {
+                              await reorderItems(sectionId, itemIds, parentFolderId);
+                              await reloadAndSync();
+                            }
                           }}
                           onMoveItem={async (itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex) => {
-                            await moveItem(itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex);
-                            await reloadAndSync();
+                            if (user && saveToFirestore && config) {
+                              const updatedConfig = moveItemInConfig(config, itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex);
+                              setConfig(updatedConfig);
+                              await saveToFirestore(updatedConfig);
+                            } else {
+                              await moveItem(itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex);
+                              await reloadAndSync();
+                            }
                           }}
                           searchQuery={searchQuery}
                           dragHandleProps={provided.dragHandleProps}
@@ -650,6 +812,19 @@ function AppContent() {
           folder={modal.folder}
           onSave={handleSaveFolder}
           onClose={() => setModal({ type: 'none' })}
+        />
+      )}
+
+      {/* Migration Prompt */}
+      {migration.needsPrompt && migration.localConfig && (
+        <MigrationPrompt
+          localConfig={migration.localConfig}
+          progress={migration.progress}
+          isMigrating={migration.status === 'migrating'}
+          error={migration.error}
+          onMigrate={migration.startMigration}
+          onSkip={migration.skipMigration}
+          onNever={migration.neverMigrate}
         />
       )}
       </div>

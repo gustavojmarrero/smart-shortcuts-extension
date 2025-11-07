@@ -39,3 +39,4 @@ releases/
 # Chrome Extension Keys (NEVER COMMIT PRIVATE KEYS)
 *.pem
 *.crx
+PRIVATE_KEY_BACKUP_INFO.txt

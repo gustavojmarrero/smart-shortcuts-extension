@@ -10,6 +10,7 @@
 **Commits Realizados:**
 - `c153305` - FASE 1-2: Base de autenticación Firebase
 - `2c134b1` - FASE 3: Integración de autenticación en UI
+- `[PENDIENTE]` - FASE 4-5: Firestore Database + Migración de Datos
 
 ---
 
@@ -82,77 +83,76 @@
 
 ---
 
-## 🔄 FASE 4: Firestore Database (PENDIENTE - 0%)
+## ✅ FASE 4: Firestore Database (COMPLETADO - 100%)
 
-### Tareas:
-- [ ] **Configurar reglas de seguridad en Firebase Console**
-  ```javascript
-  rules_version = '2';
-  service cloud.firestore {
-    match /databases/{database}/documents {
-      match /users/{userId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+### Tareas Completadas:
+- [x] **Configurar reglas de seguridad en Firebase Console**
+  - ✓ Estructura: `users/{userId}/data/config`
+  - ✓ Reglas configuradas para lectura/escritura solo por usuario autenticado
 
-        match /sections/{sectionId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-        }
-      }
-    }
-  }
-  ```
-
-- [ ] **Crear servicio Firestore** (`src/firebase/firestore.ts`)
-  - `loadUserConfig(userId)` - Cargar config desde Firestore
-  - `saveUserConfig(userId, config)` - Guardar config
-  - `subscribeToConfigChanges(userId, callback)` - Real-time sync
-  - Estructura de datos:
+- [x] **Crear hook personalizado** (`src/hooks/useFirestoreConfig.ts`)
+  - ✓ `loadConfig()` - Cargar config desde Firestore
+  - ✓ `saveToFirestore()` - Guardar config
+  - ✓ Real-time sync con `onSnapshot()`
+  - ✓ Estructura de datos simplificada:
     ```
-    users/{userId}/
-      ├── profile/
-      │   ├── email
-      │   ├── displayName
-      │   └── lastLogin
-      └── sections/{sectionId}/
-          ├── name
-          ├── icon
-          ├── color
-          └── items[]
+    users/{userId}/data/
+      └── config/
+          ├── version: "3.0.0"
+          ├── lastModified: timestamp
+          └── sections: Array<Section>
     ```
 
-- [ ] **Crear hook personalizado** (`src/hooks/useFirestoreConfig.ts`)
-  - Cargar/guardar config automáticamente
-  - Sincronización bidireccional
-  - Cache local para rendimiento
+- [x] **Crear operaciones CRUD inmutables** (`src/storage/firestore-operations.ts`)
+  - ✓ `addSectionToConfig()` / `updateSectionInConfig()` / `deleteSectionFromConfig()`
+  - ✓ `addShortcutToConfig()` / `updateShortcutInConfig()` / `deleteShortcutFromConfig()`
+  - ✓ `addFolderToConfig()` / `updateFolderInConfig()` / `deleteFolderFromConfig()`
+  - ✓ `reorderSectionsInConfig()` / `reorderItemsInConfig()` / `moveItemInConfig()`
+  - ✓ Helper `removeUndefined()` para compatibilidad con Firestore
+  - ✓ Operaciones puras que NO tocan chrome.storage.sync
 
-- [ ] **Modificar `src/storage/config.ts`**
-  - Adaptar `loadConfig()` para intentar Firestore primero
-  - Adaptar `saveConfig()` para doble-escritura:
-    1. Firestore (si autenticado)
-    2. `chrome.storage.local` (backup/cache)
-  - Mantener backward compatibility
+- [x] **Modificar `src/popup/App.tsx` y `src/options/Options.tsx`**
+  - ✓ Arquitectura Firestore-first para usuarios autenticados
+  - ✓ Actualizaciones optimistas (setConfig inmediato + guardar en Firestore)
+  - ✓ Fallback a chrome.storage.sync para usuarios no autenticados
+  - ✓ Sincronización bidireccional con listeners de Firestore
+  - ✓ Try-catch-finally para manejo de errores robusto
 
-### Estimación: 5-6 horas
+### Tiempo Real: ~4 horas
 
 ---
 
-## 🔄 FASE 5: Migración de Datos (PENDIENTE - 0%)
+## ✅ FASE 5: Migración de Datos (COMPLETADO - 100%)
 
-### Tareas:
-- [ ] **Crear hook de migración** (`src/hooks/useMigration.ts`)
-  - Detectar datos en `chrome.storage.sync`
-  - Verificar si ya existe config en Firestore
-  - Preguntar al usuario si desea migrar
+### Tareas Completadas:
+- [x] **Crear hook de migración** (`src/hooks/useMigration.ts`)
+  - ✓ Detecta datos en `chrome.storage.sync`
+  - ✓ Verifica si ya existe config en Firestore
+  - ✓ Maneja estados: checking, pending, migrating, completed, skipped, never
+  - ✓ Guarda decisión del usuario en localStorage
+  - ✓ Progreso simulado durante migración (0-100%)
 
-- [ ] **Crear componente de migración** (`src/components/Migration/MigrationPrompt.tsx`)
-  - Modal atractivo con beneficios
-  - Opciones: "Migrar ahora", "Después", "Nunca"
-  - Progress bar durante migración
+- [x] **Crear componente de migración** (`src/components/Migration/MigrationPrompt.tsx`)
+  - ✓ Modal moderno con gradientes y animaciones
+  - ✓ Muestra estadísticas (número de secciones y shortcuts)
+  - ✓ Lista de beneficios (acceso multi-dispositivo, sync automático, backup)
+  - ✓ 3 opciones: "Migrar Ahora", "Recordarme Después", "No migrar"
+  - ✓ Progress bar animada durante migración
+  - ✓ Animación de éxito al completar
 
-- [ ] **Integrar en App.tsx**
-  - Mostrar prompt después de login
-  - Ejecutar migración en background
+- [x] **Integrar en App.tsx**
+  - ✓ Muestra prompt después de login
+  - ✓ Ejecuta migración en background con feedback visual
+  - ✓ No bloqueante - usuario puede posponer
+  - ✓ Respeta decisión "nunca" del usuario
 
-### Estimación: 3-4 horas
+### Mejoras Adicionales UX:
+- [x] **Optimizar Options.tsx**
+  - ✓ Secciones NO se expanden automáticamente al cargar (mejor rendimiento)
+  - ✓ Botones "Expandir Todo" / "Colapsar Todo" agregados
+  - ✓ Mejora de navegación y scroll
+
+### Tiempo Real: ~3 horas
 
 ---
 
@@ -249,12 +249,12 @@
 | 1. Setup Inicial | ✅ Completado | 100% | ~2 horas | 2-3 horas |
 | 2. Autenticación | ✅ Completado | 100% | ~3 horas | 4-5 horas |
 | 3. Integración UI | ✅ Completado | 100% | ~2 horas | 2-3 horas |
-| 4. Firestore Database | 🔄 Pendiente | 0% | - | 5-6 horas |
-| 5. Migración Datos | 🔄 Pendiente | 0% | - | 3-4 horas |
+| 4. Firestore Database | ✅ Completado | 100% | ~4 horas | 5-6 horas |
+| 5. Migración Datos | ✅ Completado | 100% | ~3 horas | 3-4 horas |
 | 6. Manejo Errores | 🔄 Pendiente | 0% | - | 2-3 horas |
 | 7. Optimización | 🔄 Pendiente | 0% | - | 3-4 horas |
 | 8. Documentación | 🔄 Pendiente | 0% | - | 2 horas |
-| **TOTAL** | **47% Completo** | **47%** | **~7 horas** | **23-30 horas** |
+| **TOTAL** | **63% Completo** | **63%** | **~14 horas** | **23-30 horas** |
 
 ---
 
@@ -297,23 +297,28 @@
 
 ## 🎯 Próximos Pasos Inmediatos
 
-1. ✅ **COMPLETADO - Commits realizados:**
-   - `c153305`: FASE 1-2 (Setup + Autenticación)
-   - `2c134b1`: FASE 3 (Integración UI)
+1. ✅ **COMPLETADO - Fases 1-5:**
+   - ✅ Setup Inicial + Autenticación
+   - ✅ Integración UI
+   - ✅ Firestore Database con CRUD completo
+   - ✅ Migración de datos con prompt y progress bar
+   - ✅ Mejoras UX en Options.tsx
 
-2. 🔧 **OPCIONAL - Debuggear autenticación:**
-   - Abrir DevTools en la extensión
-   - Verificar errores en consola al hacer login
-   - Posible problema: `signInWithCredential` failing
-   - Solución temporal: Verificar tokens en chrome.identity
+2. 📝 **SIGUIENTE: Commit FASE 4-5**
+   - Crear commit con todos los cambios
+   - Incluir archivos nuevos:
+     - `src/hooks/useFirestoreConfig.ts`
+     - `src/hooks/useMigration.ts`
+     - `src/storage/firestore-operations.ts`
+     - `src/components/Migration/MigrationPrompt.tsx`
+   - Modificaciones en `App.tsx` y `Options.tsx`
 
-3. **🚀 SIGUIENTE: FASE 4 - Firestore Database**
-   - Configurar reglas de seguridad en Firebase Console
-   - Crear servicio Firestore (`src/firebase/firestore.ts`)
-   - Implementar CRUD completo
-   - Hook `useFirestoreConfig` para sincronización
+3. **🚀 SIGUIENTE: FASE 6 - Manejo de Errores**
+   - Detección de conexión offline
+   - Auto-refresh de tokens
+   - Testing de casos edge
 
-4. **Continuar con FASE 5-8** según roadmap
+4. **Continuar con FASE 7-8** según roadmap
 
 ---
 
@@ -439,8 +444,8 @@ cat ROADMAP_FIREBASE.md | head -100
 
 ---
 
-**Última actualización:** 6 de Noviembre, 2025 - 17:51
+**Última actualización:** 6 de Noviembre, 2025 - 19:30
 **Mantenedor:** Gustavo Marrero
 **Repositorio:** [smart-shortcuts-extension](https://github.com/gustavojmarrero/smart-shortcuts-extension)
 
-**Progreso:** 47% completado (3 de 8 fases) ✅✅✅⬜⬜⬜⬜⬜
+**Progreso:** 63% completado (5 de 8 fases) ✅✅✅✅✅⬜⬜⬜
