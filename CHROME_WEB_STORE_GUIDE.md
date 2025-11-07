@@ -65,14 +65,26 @@ Smart Shortcuts
 
 **Descripción corta (132 caracteres máx):**
 ```
-Organiza y accede rápidamente a tus páginas web favoritas. Sincronización en la nube con Firebase. Multi-dispositivo.
+Shortcuts dinámicos para productos, pedidos y más. Sincronización en la nube. Perfecto para e-commerce y desarrollo.
 ```
 
 **Descripción detallada:**
 ```
-🚀 Smart Shortcuts - Organiza tus Enlaces Favoritos
+🚀 Smart Shortcuts - Enlaces Dinámicos que Ahorran Tiempo
 
-Accede rápidamente a tus páginas web más visitadas con Smart Shortcuts. Organiza enlaces en secciones personalizadas, crea carpetas anidadas ilimitadas y sincroniza todo en la nube con Firebase.
+¿Cansado de navegar múltiples clicks para llegar a un producto en Amazon o revisar un pedido? Smart Shortcuts te permite crear enlaces dinámicos que te llevan DIRECTAMENTE al detalle del producto, pedido, issue de GitHub, o cualquier página específica.
+
+💡 LA DIFERENCIA: SHORTCUTS DINÁMICOS
+
+En lugar de guardar solo URLs estáticas, crea shortcuts con variables:
+• Amazon producto: amazon.com/dp/${input} → Ingresa el ASIN → Acceso directo
+• Amazon pedido: amazon.com/gp/your-account/order-details?orderID=${input}
+• Mercadolibre: articulo.mercadolibre.com.mx/MLM-${input}
+• GitHub: github.com/user/repo/issues/${input}
+
+Un click + el ID = Acceso instantáneo. Sin navegar menús, sin búsquedas.
+
+Además: Organiza en carpetas, sincroniza entre dispositivos con Firebase, y trabaja offline.
 
 ✨ CARACTERÍSTICAS PRINCIPALES
 
@@ -93,10 +105,18 @@ Accede rápidamente a tus páginas web más visitadas con Smart Shortcuts. Organ
 • Drag & drop para reorganizar fácilmente
 • Acordeón multi-expansión para mejor navegación
 
-🔗 Enlaces Dinámicos
+🔗 Shortcuts Dinámicos (Característica Destacada)
 • Variables en URLs: ${input}, ${clipboard}, ${date}
-• Ejemplo: amazon.com/dp/${input} - pega el ASIN directamente
-• Ejemplo: github.com/search?q=${clipboard} - busca lo que copiaste
+• Ingresa datos directamente al hacer click
+• PERFECTO para e-commerce, desarrollo, investigación
+
+Ejemplos de uso real:
+• Amazon producto: amazon.com/dp/${input} → Ingresa ASIN (B08N5WRWNW) → Abre el producto directamente
+• Amazon pedido: amazon.com/gp/your-account/order-details?orderID=${input} → Accede a cualquier pedido
+• Mercadolibre: articulo.mercadolibre.com.mx/MLM-${input} → Ingresa ID del producto
+• GitHub issue: github.com/user/repo/issues/${input} → Abre cualquier issue
+• Jira ticket: company.atlassian.net/browse/${input} → Accede a tickets directamente
+• Desde clipboard: google.com/search?q=${clipboard} → Busca lo que copiaste
 
 🌐 Funciona Offline
 • Modo offline completo con cache local
@@ -117,13 +137,33 @@ Accede rápidamente a tus páginas web más visitadas con Smart Shortcuts. Organ
 • OAuth2 seguro con chrome.identity
 • Código abierto: github.com/gustavojmarrero/smart-shortcuts-extension
 
-📊 CASOS DE USO
+📊 CASOS DE USO CON SHORTCUTS DINÁMICOS
 
-• Desarrolladores: Acceso rápido a GitHub, Stack Overflow, documentación
-• E-commerce: Links directos a productos en Amazon, Mercadolibre
-• Estudiantes: Recursos académicos, bibliotecas, plataformas educativas
-• Marketing: Analytics, redes sociales, herramientas SEO
-• Investigación: Bases de datos, journals, herramientas de búsqueda
+🛒 E-commerce & Ventas:
+• Amazon: Acceso directo a productos (ASIN), pedidos, inventario
+• Mercadolibre: Ver productos, ventas, publicaciones por ID
+• Shopify: Admin de productos, órdenes, clientes
+• eBay: Tracking de artículos, ventas, mensajes
+→ Ahorra 5-10 clicks por consulta
+
+💻 Desarrollo:
+• GitHub: Issues, pull requests, repos por número
+• Jira/Trello: Tickets y boards directamente
+• Stack Overflow: Búsquedas desde clipboard
+• Documentación: Acceso rápido con variables
+→ Flujo de trabajo 3x más rápido
+
+📚 Investigación & Educación:
+• Google Scholar: Búsquedas dinámicas
+• Bibliotecas digitales: Acceso por ISBN/DOI
+• Plataformas educativas: Cursos, módulos
+→ Organiza recursos por proyectos
+
+📊 Analytics & Marketing:
+• Google Analytics: Dashboards específicos
+• Meta Ads: Campañas por ID
+• SEO Tools: Análisis de URLs dinámicas
+→ Reportes en segundos
 
 ⚙️ CARACTERÍSTICAS TÉCNICAS
 
@@ -389,29 +429,35 @@ Smart Shortcuts es **código abierto**:
 
 ### Screenshots Recomendados
 
-**1. Popup Principal (1280x800)**
-- Muestra varias secciones expandidas
-- Incluye shortcuts directos y dinámicos
-- Muestra el sistema de carpetas anidadas
+**1. Shortcuts Dinámicos en Acción (1280x800) ⭐ PRIORIDAD**
+- Muestra un shortcut dinámico (ej: Amazon producto con ${input})
+- Si es posible, captura el modal de input donde ingresas el ASIN/ID
+- Ejemplo visible: "Amazon Producto: amazon.com/dp/${input}"
+- ESTO ES LO QUE TE DIFERENCIA - Debe ser el screenshot #1
+
+**2. Popup Principal (1280x800)**
+- Muestra varias secciones expandidas con shortcuts
+- Incluye MÁS shortcuts dinámicos visibles (resalta ${input}, ${clipboard})
+- Muestra carpetas anidadas con organización
 - UserProfile visible en header
 
-**2. Página de Opciones (1280x800)**
-- Vista de toda la configuración
-- Drag & drop en acción (si es posible)
-- Modal de edición abierto
+**3. Casos de Uso E-commerce (1280x800)**
+- Sección de "Amazon" o "E-commerce" expandida
+- Múltiples shortcuts dinámicos:
+  * Amazon Producto (${input})
+  * Amazon Pedido (${input})
+  * Mercadolibre (${input})
+- Demuestra el valor para vendedores/compradores
 
-**3. Búsqueda en Acción (1280x800)**
-- Barra de búsqueda con texto
-- Resultados filtrados
+**4. Página de Opciones (1280x800)**
+- Vista de configuración completa
+- Modal de edición de shortcut dinámico abierto
+- Se ve el campo URL con la variable ${input}
+
+**5. Búsqueda + Organización (1280x800)**
+- Barra de búsqueda con resultados
 - Highlighting visible
-
-**4. Migración y Autenticación (1280x800)**
-- WelcomeModal con opciones de migración
-- O UserProfile dropdown abierto
-
-**5. Modo Offline (1280x800)**
-- Banner offline visible
-- Funcionalidad completa funcionando
+- Varias carpetas expandidas
 
 ---
 
@@ -476,7 +522,7 @@ https://github.com/gustavojmarrero/smart-shortcuts-extension/blob/main/PRIVACY.m
    ```
 2. **Single purpose description:**
    ```
-   Organizar y acceder rápidamente a enlaces favoritos con sincronización en la nube.
+   Crear y organizar shortcuts web dinámicos (con variables como ${input}) para acceder directamente a productos, pedidos y páginas específicas. Incluye sincronización en la nube.
    ```
 3. **Permission justifications:** (copiar de arriba)
 4. **Data usage disclosure:**
