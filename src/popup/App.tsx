@@ -11,6 +11,7 @@ import { EditShortcutModal, EditSectionModal, EditFolderModal } from './componen
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import Welcome from '../components/Auth/Welcome';
 import UserProfile from '../components/Auth/UserProfile';
+import { useFirestoreConfig } from '../hooks/useFirestoreConfig';
 import {
   loadConfig,
   addSection,
@@ -38,10 +39,22 @@ type ModalState =
 const STORAGE_KEY = 'expandedSections';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const {
+    config: firestoreConfig,
+    loading: firestoreLoading,
+    hasConfig: hasFirestoreConfig,
+    saveConfig: saveToFirestore,
+  } = useFirestoreConfig(user);
+
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Usar sessionStorage para recordar que ya migramos (persiste entre recargas de popup)
+  const getMigrationFlag = () => sessionStorage.getItem('migration_attempted') === 'true';
+  const setMigrationFlag = () => sessionStorage.setItem('migration_attempted', 'true');
+
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
     // Cargar desde localStorage
     try {
@@ -61,24 +74,61 @@ function AppContent() {
     console.log('🚀 Smart Shortcuts App Mounted');
     console.log('DragDropContext is active');
     console.log('='.repeat(50));
-
-    // Test alert to verify code is running
-    // alert('App mounted - if you see this, the component is working');
   }, []);
 
-  // Load config on mount
+  // Sync Firestore config to local state
   useEffect(() => {
-    console.log('📥 Loading config...');
-    loadConfig().then((cfg) => {
-      console.log('✅ Config loaded:', cfg);
-      setConfig(cfg);
-      // Si no hay secciones expandidas guardadas, expandir la primera
-      if (cfg.sections.length > 0 && expandedSections.size === 0) {
-        const firstSection = [...cfg.sections].sort((a, b) => a.order - b.order)[0];
-        setExpandedSections(new Set([firstSection.id]));
+    if (user && firestoreConfig) {
+      console.log('✅ Config de Firestore disponible, actualizando estado');
+      setConfig(firestoreConfig);
+      // NO guardar en chrome.storage cuando está autenticado - Firestore es la fuente de verdad
+    }
+  }, [user, firestoreConfig]);
+
+  // Load config based on auth status (solo primera carga)
+  useEffect(() => {
+    async function initConfig() {
+      if (user) {
+        // Usuario autenticado: esperar a que useFirestoreConfig cargue
+        console.log('👤 Usuario autenticado, usando Firestore');
+
+        if (!firestoreLoading && !firestoreConfig && !hasFirestoreConfig && !getMigrationFlag()) {
+          // Usuario nuevo o primera vez: intentar migrar desde chrome.storage (SOLO UNA VEZ)
+          console.log('⚠️ Usuario sin config en Firestore, intentando migrar desde chrome.storage');
+          setMigrationFlag(); // Marcar que ya intentamos migrar
+
+          const localConfig = await loadConfig();
+
+          if (localConfig.sections.length > 0) {
+            // Hay datos locales, migrar a Firestore
+            console.log('📤 Migrando config local a Firestore');
+            await saveToFirestore(localConfig);
+            setConfig(localConfig);
+          } else {
+            // Usuario completamente nuevo
+            console.log('🆕 Usuario nuevo sin datos');
+            setConfig(localConfig); // DEFAULT_CONFIG
+          }
+        }
+      } else {
+        // Usuario no autenticado: usar chrome.storage.sync (comportamiento legacy)
+        console.log('🔓 Usuario no autenticado, usando chrome.storage');
+        const localConfig = await loadConfig();
+        setConfig(localConfig);
+        sessionStorage.removeItem('migration_attempted'); // Reset para cuando vuelva a autenticarse
       }
-    });
-  }, []);
+    }
+
+    initConfig();
+  }, [user, hasFirestoreConfig, firestoreLoading]);
+
+  // Expandir primera sección si es necesario
+  useEffect(() => {
+    if (config && config.sections.length > 0 && expandedSections.size === 0) {
+      const firstSection = [...config.sections].sort((a, b) => a.order - b.order)[0];
+      setExpandedSections(new Set([firstSection.id]));
+    }
+  }, [config]);
 
   // Guardar expandedSections en localStorage cuando cambien
   useEffect(() => {
@@ -89,14 +139,19 @@ function AppContent() {
     }
   }, [expandedSections]);
 
-  // Listen for storage changes
+  // Listen for storage changes (solo si NO está autenticado)
   useEffect(() => {
+    if (user) {
+      // Si está autenticado, Firestore maneja la sincronización en tiempo real
+      return;
+    }
+
     const listener = () => {
       loadConfig().then(setConfig);
     };
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
-  }, []);
+  }, [user]);
 
   const handleCreateSection = async () => {
     setModal({ type: 'section' });
@@ -115,8 +170,7 @@ function AppContent() {
         // Auto-expandir nueva sección
         setExpandedSections((prev) => new Set([...prev, newSection.id]));
       }
-      const updated = await loadConfig();
-      setConfig(updated);
+      await reloadAndSync();
       setModal({ type: 'none' });
     }
   };
@@ -130,8 +184,7 @@ function AppContent() {
         next.delete(sectionId);
         return next;
       });
-      const updated = await loadConfig();
-      setConfig(updated);
+      await reloadAndSync();
     }
   };
 
@@ -157,8 +210,7 @@ function AppContent() {
           validationMessage: data.validationMessage,
         }, modal.parentFolderId);
       }
-      const updated = await loadConfig();
-      setConfig(updated);
+      await reloadAndSync();
       setModal({ type: 'none' });
     }
   };
@@ -166,8 +218,7 @@ function AppContent() {
   const handleDeleteShortcut = async (sectionId: string, shortcutId: string) => {
     if (confirm('¿Seguro que quieres eliminar este shortcut?')) {
       await deleteShortcut(sectionId, shortcutId);
-      const updated = await loadConfig();
-      setConfig(updated);
+      await reloadAndSync();
     }
   };
 
@@ -186,8 +237,7 @@ function AppContent() {
           items: [],
         }, modal.parentFolderId);
       }
-      const updated = await loadConfig();
-      setConfig(updated);
+      await reloadAndSync();
       setModal({ type: 'none' });
     }
   };
@@ -195,8 +245,7 @@ function AppContent() {
   const handleDeleteFolder = async (sectionId: string, folderId: string) => {
     if (confirm('¿Seguro que quieres eliminar esta carpeta y todo su contenido?')) {
       await deleteFolder(sectionId, folderId);
-      const updated = await loadConfig();
-      setConfig(updated);
+      await reloadAndSync();
     }
   };
 
@@ -228,11 +277,38 @@ function AppContent() {
     chrome.runtime.openOptionsPage();
   };
 
-  // Mostrar loading mientras se verifica autenticación
-  if (loading) {
+  /**
+   * Helper: Recargar config y sincronizar con Firestore si está autenticado
+   */
+  const reloadAndSync = async () => {
+    if (user && saveToFirestore) {
+      // Usuario autenticado: NO recargar desde chrome.storage, solo sincronizar con Firestore
+      // Las operaciones ya guardaron en chrome.storage.sync, ahora solo propagamos a Firestore
+      try {
+        const updated = await loadConfig();
+        await saveToFirestore(updated);
+        console.log('✅ Sincronizado con Firestore');
+        // No llamar setConfig aquí - el snapshot de Firestore lo actualizará
+      } catch (error) {
+        console.error('❌ Error sincronizando con Firestore:', error);
+        // En caso de error, actualizar el estado local al menos
+        const updated = await loadConfig();
+        setConfig(updated);
+      }
+    } else {
+      // Usuario no autenticado: comportamiento legacy
+      const updated = await loadConfig();
+      setConfig(updated);
+    }
+  };
+
+  // Mostrar loading mientras se verifica autenticación o se carga Firestore
+  if (authLoading || (user && firestoreLoading)) {
     return (
       <div className="w-[380px] h-[600px] flex items-center justify-center">
-        <div className="text-text-secondary">Cargando...</div>
+        <div className="text-text-secondary">
+          {authLoading ? 'Verificando autenticación...' : 'Cargando configuración...'}
+        </div>
       </div>
     );
   }
@@ -300,8 +376,7 @@ function AppContent() {
       reordered.splice(destination.index, 0, removed);
 
       await reorderSections(reordered.map(s => s.id));
-      const updated = await loadConfig();
-      setConfig(updated);
+      await reloadAndSync();
       return;
     }
 
@@ -380,10 +455,9 @@ function AppContent() {
       console.log('✅ Item moved successfully');
     }
 
-    // Reload config
+    // Reload config and sync with Firestore
     console.log('🔄 Reloading config...');
-    const updated = await loadConfig();
-    setConfig(updated);
+    await reloadAndSync();
     console.log('✅ Config reloaded');
   };
 
@@ -523,13 +597,11 @@ function AppContent() {
                           onDeleteSection={() => handleDeleteSection(section.id)}
                           onReorderItems={async (sectionId, itemIds, parentFolderId) => {
                             await reorderItems(sectionId, itemIds, parentFolderId);
-                            const updated = await loadConfig();
-                            setConfig(updated);
+                            await reloadAndSync();
                           }}
                           onMoveItem={async (itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex) => {
                             await moveItem(itemId, sourceSectionId, targetSectionId, sourceFolderId, targetFolderId, newIndex);
-                            const updated = await loadConfig();
-                            setConfig(updated);
+                            await reloadAndSync();
                           }}
                           searchQuery={searchQuery}
                           dragHandleProps={provided.dragHandleProps}
