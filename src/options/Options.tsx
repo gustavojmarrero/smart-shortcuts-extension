@@ -13,6 +13,9 @@ import {
   Folder as FolderIcon,
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import Welcome from '../components/Auth/Welcome';
+import UserProfile from '../components/Auth/UserProfile';
 import {
   loadConfig,
   addSection,
@@ -40,7 +43,8 @@ type ModalState =
   | { type: 'shortcut'; sectionId: string; shortcut?: Shortcut; parentFolderId?: string }
   | { type: 'folder'; sectionId: string; folder?: Folder; parentFolderId?: string };
 
-export default function Options() {
+function OptionsContent() {
+  const { user, loading } = useAuth();
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -502,10 +506,29 @@ export default function Options() {
     return null;
   };
 
-  if (!config) {
+  // Mostrar loading mientras se verifica autenticación
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-text-secondary">Cargando...</div>
+      </div>
+    );
+  }
+
+  // Mostrar Welcome si no está autenticado
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Welcome />
+      </div>
+    );
+  }
+
+  // Mostrar loading mientras se carga config
+  if (!config) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-text-secondary">Cargando configuración...</div>
       </div>
     );
   }
@@ -519,13 +542,16 @@ export default function Options() {
       <header className="bg-background border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-text-primary">
-                Configuración Avanzada
-              </h1>
-              <p className="text-small text-text-secondary mt-1">
-                Gestiona tus secciones y shortcuts
-              </p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-text-primary">
+                  Configuración Avanzada
+                </h1>
+                <p className="text-small text-text-secondary mt-1">
+                  Gestiona tus secciones y shortcuts
+                </p>
+              </div>
+              <UserProfile />
             </div>
             <div className="flex gap-2">
               <button
@@ -742,5 +768,14 @@ export default function Options() {
       )}
     </div>
     </DragDropContext>
+  );
+}
+
+// Wrapper principal con AuthProvider
+export default function Options() {
+  return (
+    <AuthProvider>
+      <OptionsContent />
+    </AuthProvider>
   );
 }

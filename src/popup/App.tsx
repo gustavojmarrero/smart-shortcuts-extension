@@ -8,6 +8,9 @@ console.log('📦 App.tsx loaded');
 import EmptyState from './components/EmptyState';
 import SearchBar from './components/SearchBar';
 import { EditShortcutModal, EditSectionModal, EditFolderModal } from './components/EditModal';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import Welcome from '../components/Auth/Welcome';
+import UserProfile from '../components/Auth/UserProfile';
 import {
   loadConfig,
   addSection,
@@ -34,7 +37,8 @@ type ModalState =
 
 const STORAGE_KEY = 'expandedSections';
 
-export default function App() {
+function AppContent() {
+  const { user, loading } = useAuth();
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -224,10 +228,25 @@ export default function App() {
     chrome.runtime.openOptionsPage();
   };
 
-  if (!config) {
+  // Mostrar loading mientras se verifica autenticación
+  if (loading) {
     return (
       <div className="w-[380px] h-[600px] flex items-center justify-center">
         <div className="text-text-secondary">Cargando...</div>
+      </div>
+    );
+  }
+
+  // Mostrar Welcome si no está autenticado
+  if (!user) {
+    return <Welcome />;
+  }
+
+  // Mostrar loading mientras se carga config
+  if (!config) {
+    return (
+      <div className="w-[380px] h-[600px] flex items-center justify-center">
+        <div className="text-text-secondary">Cargando configuración...</div>
       </div>
     );
   }
@@ -415,7 +434,9 @@ export default function App() {
         <h1 className="text-[15px] font-semibold text-text-primary">
           Smart Shortcuts
         </h1>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <UserProfile />
+          <div className="flex items-center gap-1">
           {sortedSections.length > 0 && (
             <button
               onClick={toggleAllSections}
@@ -436,6 +457,7 @@ export default function App() {
           >
             <Settings className="w-3.5 h-3.5 text-text-secondary" />
           </button>
+          </div>
         </div>
       </div>
 
@@ -560,5 +582,14 @@ export default function App() {
       )}
       </div>
     </DragDropContext>
+  );
+}
+
+// Wrapper principal con AuthProvider
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
