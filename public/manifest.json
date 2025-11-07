@@ -1,13 +1,29 @@
 {
   "manifest_version": 3,
   "name": "Smart Shortcuts",
-  "version": "2.2.1",
+  "version": "3.0.0",
   "description": "Organiza y accede rápidamente a tus páginas web favoritas. Soporta enlaces dinámicos, carpetas anidadas y sincronización automática.",
   "author": "Gustavo Marrero",
   "homepage_url": "https://github.com/gustavojmarrero/smart-shortcuts-extension",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "identity"
+  ],
+  "oauth2": {
+    "client_id": "390737548991-9mqe47luc5jukhi9sg89cnagraua2qoq.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "host_permissions": [
+    "https://*.googleapis.com/*",
+    "https://*.firebaseio.com/*",
+    "https://*.firestore.googleapis.com/*"
   ],
   "action": {
     "default_popup": "src/popup/index.html",

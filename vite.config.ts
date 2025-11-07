@@ -5,6 +5,11 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [react()],
   base: './',
+  define: {
+    // Necesario para Firebase en extensiones Chrome
+    'process.env': {},
+    global: 'globalThis',
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
