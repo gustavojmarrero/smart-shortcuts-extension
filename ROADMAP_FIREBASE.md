@@ -280,11 +280,12 @@
 - 1000 usuarios activos × 5 aperturas/día = 5,000 lecturas/día ✅ OK
 - Suficiente para fase inicial
 
-### 4. **OAuth Client ID Específico**
-- El Extension ID cambia entre desarrollo y producción
-- Necesitarás **2 OAuth Client IDs**:
-  - Uno para dev (`eldeicjkfibgeicelepghpfbkbkmnbfi`)
-  - Uno para producción (cuando publiques en Chrome Web Store)
+### 4. **Extension ID Permanente**
+- Extension ID fijo usando campo `"key"` en manifest.json
+- **Extension ID (dev y prod):** `gacibpmoecbcbhkeidgdhaoijmgablle`
+- **OAuth Client ID:** `390737548991-9mqe47luc5jukhi9sg89cnagraua2qoq.apps.googleusercontent.com`
+- El mismo ID funciona en desarrollo, testing y producción
+- Ver [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) para más detalles
 
 ### 5. **Content Security Policy (CSP)**
 - Manifest V3 es MUY restrictivo

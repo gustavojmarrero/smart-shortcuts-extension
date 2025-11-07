@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Smart Shortcuts",
   "version": "3.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw8kIB6/Fr3J4rhmDJXVQ08wt+uJlXaw4YPwk20NT/MbJcAFGe5+Gi1ZEL0nutFJbJEgq1XsBEq1QmaPBAm06faF5i9e3yHYDx8DitCa7TW5fOvBUnvK/U2+zMhwcs6ZlaI/L/GOfKx7xPJ7FM5DREHaEedmRzJ0NGzh/0YhYsEIz31HBFfkQvXzi8Ecql5Pmj995EBKKN2QjqADHArN0GZKgLBQZBoUnfdTAcd0hOQKyrw53+RNfnmwKRoiKIezHWnpofrS59EB6KsUpoLUc4Ut5kg2qI2pXCq6RTQOQwNC6szvhfEzdpVYYL1oVmL9MzTnRtcnVTJTjLplCF9wY6QIDAQAB",
   "description": "Organiza y accede rápidamente a tus páginas web favoritas. Soporta enlaces dinámicos, carpetas anidadas y sincronización automática.",
   "author": "Gustavo Marrero",
   "homepage_url": "https://github.com/gustavojmarrero/smart-shortcuts-extension",

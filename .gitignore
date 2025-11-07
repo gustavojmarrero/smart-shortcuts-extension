@@ -35,3 +35,7 @@ releases/
 .env
 .env.local
 .env.*.local
+
+# Chrome Extension Keys (NEVER COMMIT PRIVATE KEYS)
+*.pem
+*.crx
