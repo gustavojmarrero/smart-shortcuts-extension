@@ -4,6 +4,7 @@ import {
   signInWithGoogle as firebaseSignIn,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  refreshAuthToken,
 } from '../firebase/auth';
 
 // Definir el tipo del contexto
@@ -14,6 +15,7 @@ interface AuthContextType {
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
+  isTokenExpired: boolean;
 }
 
 // Crear el contexto
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTokenExpired, setIsTokenExpired] = useState(false);
 
   // Escuchar cambios en el estado de autenticación
   useEffect(() => {
@@ -41,15 +44,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Log para debug
       if (authUser) {
-        console.log('Usuario autenticado:', authUser.displayName || authUser.email);
+        console.log('✅ [AUTH] Usuario autenticado:', authUser.displayName || authUser.email);
       } else {
-        console.log('Usuario no autenticado');
+        console.log('🔓 [AUTH] Usuario no autenticado');
       }
     });
 
     // Cleanup: cancelar suscripción al desmontar
     return () => unsubscribe();
   }, []);
+
+  // Auto-refresh de tokens cada 50 minutos (los tokens de Google expiran en 1 hora)
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🔄 [AUTH] Iniciando auto-refresh de tokens');
+
+    const refreshInterval = setInterval(async () => {
+      console.log('🔄 [AUTH] Refrescando token...');
+
+      try {
+        const newToken = await refreshAuthToken();
+
+        if (newToken) {
+          console.log('✅ [AUTH] Token refrescado exitosamente');
+          setIsTokenExpired(false);
+        } else {
+          console.warn('⚠️ [AUTH] No se pudo refrescar el token');
+          setIsTokenExpired(true);
+        }
+      } catch (err) {
+        console.error('❌ [AUTH] Error refrescando token:', err);
+        setIsTokenExpired(true);
+      }
+    }, 50 * 60 * 1000); // 50 minutos
+
+    // Cleanup: cancelar interval al desmontar o cambiar de usuario
+    return () => {
+      console.log('🛑 [AUTH] Deteniendo auto-refresh de tokens');
+      clearInterval(refreshInterval);
+    };
+  }, [user]);
 
   /**
    * Función para iniciar sesión con Google
@@ -103,6 +138,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signIn,
     signOut,
     clearError,
+    isTokenExpired,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

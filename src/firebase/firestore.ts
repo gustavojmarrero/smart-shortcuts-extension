@@ -10,6 +10,24 @@ import {
 import { db } from './config';
 import type { ShortcutConfig } from '../storage/types';
 
+/**
+ * Determina si un error es causado por problemas de red/conexión
+ */
+function isNetworkError(error: any): boolean {
+  if (!error) return false;
+
+  const errorCode = error.code || '';
+  const errorMessage = error.message || '';
+
+  return (
+    errorCode === 'unavailable' ||
+    errorCode === 'failed-precondition' ||
+    errorMessage.includes('network') ||
+    errorMessage.includes('offline') ||
+    errorMessage.includes('Failed to get document')
+  );
+}
+
 // Interfaces para los datos en Firestore
 interface FirestoreConfig extends Omit<ShortcutConfig, 'lastModified'> {
   lastModified: Timestamp;
@@ -48,7 +66,15 @@ export async function loadUserConfig(userId: string): Promise<ShortcutConfig | n
       console.log('⚠️ [FIRESTORE] No existe config para este usuario');
       return null;
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (isNetworkError(error)) {
+      console.warn('🔴 [FIRESTORE] Error de red al cargar config. Puede estar offline.');
+      // Re-lanzar con mensaje más claro
+      const networkError = new Error('Sin conexión a internet. Mostrando datos en caché.');
+      (networkError as any).isNetworkError = true;
+      throw networkError;
+    }
+
     console.error('❌ [FIRESTORE] Error cargando config:', error);
     throw error;
   }
@@ -76,7 +102,15 @@ export async function saveUserConfig(userId: string, config: ShortcutConfig): Pr
     await setDoc(docRef, firestoreData);
 
     console.log('✅ [FIRESTORE] Config guardada exitosamente');
-  } catch (error) {
+  } catch (error: any) {
+    if (isNetworkError(error)) {
+      console.warn('🔴 [FIRESTORE] Error de red al guardar config. Puede estar offline.');
+      // Re-lanzar con mensaje más claro
+      const networkError = new Error('Sin conexión a internet. Los cambios se guardarán cuando vuelva la conexión.');
+      (networkError as any).isNetworkError = true;
+      throw networkError;
+    }
+
     console.error('❌ [FIRESTORE] Error guardando config:', error);
     throw error;
   }

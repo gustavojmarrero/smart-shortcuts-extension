@@ -17,6 +17,8 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import Welcome from '../components/Auth/Welcome';
 import UserProfile from '../components/Auth/UserProfile';
 import { useFirestoreConfig } from '../hooks/useFirestoreConfig';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import OfflineBanner from '../components/OfflineBanner';
 import {
   loadConfig,
   addSection,
@@ -65,6 +67,9 @@ function OptionsContent() {
     loading: firestoreLoading,
     saveConfig: saveToFirestore,
   } = useFirestoreConfig(user);
+
+  // Hook de estado de red
+  const { isOnline, isReconnecting } = useNetworkStatus();
 
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
@@ -731,6 +736,9 @@ function OptionsContent() {
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
     <div className="min-h-screen bg-background-secondary">
+      {/* Offline Banner */}
+      {user && <OfflineBanner isOnline={isOnline} isReconnecting={isReconnecting} />}
+
       {/* Header */}
       <header className="bg-background border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">

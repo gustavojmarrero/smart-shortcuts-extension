@@ -14,6 +14,8 @@ import UserProfile from '../components/Auth/UserProfile';
 import { useFirestoreConfig } from '../hooks/useFirestoreConfig';
 import { useMigration } from '../hooks/useMigration';
 import MigrationPrompt from '../components/Migration/MigrationPrompt';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import OfflineBanner from '../components/OfflineBanner';
 import {
   loadConfig,
   addSection,
@@ -69,6 +71,9 @@ function AppContent() {
     hasFirestoreConfig,
     saveToFirestore
   );
+
+  // Hook de estado de red
+  const { isOnline, isReconnecting } = useNetworkStatus();
 
   const [config, setConfig] = useState<ShortcutConfig | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
@@ -653,6 +658,9 @@ function AppContent() {
       }}
     >
       <div className="w-[380px] h-[600px] flex flex-col bg-background relative">
+      {/* Offline Banner */}
+      {user && <OfflineBanner isOnline={isOnline} isReconnecting={isReconnecting} />}
+
       {/* Header */}
       <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border bg-background">
         <h1 className="text-[15px] font-semibold text-text-primary">
