@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   refreshAuthToken,
 } from '../firebase/auth';
+import { clearCache } from '../storage/cache';
 
 // Definir el tipo del contexto
 interface AuthContextType {
@@ -113,12 +114,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
 
     try {
+      // Limpiar cache local antes de cerrar sesión
+      await clearCache();
+      console.log('🗑️ [AUTH] Cache limpiado antes de signOut');
+
       await firebaseSignOut();
       setUser(null);
+      console.log('✅ [AUTH] Sesión cerrada exitosamente');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cerrar sesión';
       setError(errorMessage);
-      console.error('Error en signOut:', err);
+      console.error('❌ [AUTH] Error en signOut:', err);
     } finally {
       setLoading(false);
     }

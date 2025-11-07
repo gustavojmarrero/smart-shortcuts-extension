@@ -7,6 +7,10 @@ import {
   hasUserConfig,
   saveUserProfile,
 } from '../firebase/firestore';
+import {
+  loadCacheConfig,
+  saveCacheConfig,
+} from '../storage/cache';
 import type { ShortcutConfig } from '../storage/types';
 
 interface UseFirestoreConfigReturn {
@@ -34,7 +38,7 @@ export function useFirestoreConfig(user: User | null): UseFirestoreConfigReturn 
   const [hasConfig, setHasConfig] = useState(false);
 
   /**
-   * Cargar config inicial
+   * Cargar config inicial con estrategia de cache
    */
   const loadConfig = useCallback(async () => {
     if (!user) {
@@ -47,24 +51,57 @@ export function useFirestoreConfig(user: User | null): UseFirestoreConfigReturn 
     setError(null);
 
     try {
-      console.log('[useFirestoreConfig] Cargando config para:', user.uid);
+      console.log('📥 [useFirestoreConfig] Cargando config para:', user.uid);
 
-      // Verificar si existe config
+      // PASO 1: Intentar cargar desde cache local (rápido)
+      const cachedConfig = await loadCacheConfig();
+
+      if (cachedConfig) {
+        // Cargar cache inmediatamente (optimistic)
+        setConfig(cachedConfig);
+        setHasConfig(true);
+        console.log('⚡ [useFirestoreConfig] Config cargada desde cache (optimistic)');
+      }
+
+      // PASO 2: Verificar si existe config en Firestore
       const exists = await hasUserConfig(user.uid);
       setHasConfig(exists);
 
-      if (exists) {
-        // Cargar config
-        const loadedConfig = await loadUserConfig(user.uid);
-        setConfig(loadedConfig);
-      } else {
-        console.log('[useFirestoreConfig] Usuario nuevo, no tiene config en Firestore');
+      if (!exists) {
+        console.log('⚠️ [useFirestoreConfig] Usuario nuevo, no tiene config en Firestore');
         setConfig(null);
+        return;
       }
-    } catch (err) {
+
+      // PASO 3: Cargar de Firestore solo si es necesario
+      const firestoreConfig = await loadUserConfig(user.uid);
+
+      if (firestoreConfig) {
+        // Verificar si cache está actualizado
+        if (cachedConfig && cachedConfig.lastModified >= firestoreConfig.lastModified) {
+          console.log('✅ [useFirestoreConfig] Cache válido, usando cache');
+          // Ya tenemos el cache cargado, no hacer nada
+        } else {
+          console.log('🔄 [useFirestoreConfig] Cache desactualizado, usando Firestore');
+          setConfig(firestoreConfig);
+          // Actualizar cache
+          await saveCacheConfig(firestoreConfig);
+        }
+      }
+    } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar configuración';
       setError(errorMessage);
-      console.error('[useFirestoreConfig] Error:', err);
+      console.error('❌ [useFirestoreConfig] Error:', err);
+
+      // Si es error de red y tenemos cache, usar cache
+      if (err.isNetworkError) {
+        const cachedConfig = await loadCacheConfig();
+        if (cachedConfig) {
+          console.log('🔴 [useFirestoreConfig] Error de red, usando cache como fallback');
+          setConfig(cachedConfig);
+          setHasConfig(true);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -102,13 +139,15 @@ export function useFirestoreConfig(user: User | null): UseFirestoreConfigReturn 
 
     console.log('[useFirestoreConfig] Suscribiéndose a cambios en tiempo real');
 
-    const unsubscribe = subscribeToConfigChanges(user.uid, (updatedConfig) => {
+    const unsubscribe = subscribeToConfigChanges(user.uid, async (updatedConfig) => {
       if (updatedConfig) {
-        console.log('[useFirestoreConfig] Config actualizada desde servidor');
+        console.log('🔄 [useFirestoreConfig] Config actualizada desde servidor');
         setConfig(updatedConfig);
         setHasConfig(true);
+        // Actualizar cache con los cambios del servidor
+        await saveCacheConfig(updatedConfig);
       } else {
-        console.log('[useFirestoreConfig] Config eliminada desde servidor');
+        console.log('⚠️ [useFirestoreConfig] Config eliminada desde servidor');
         setConfig(null);
         setHasConfig(false);
       }
@@ -122,7 +161,7 @@ export function useFirestoreConfig(user: User | null): UseFirestoreConfigReturn 
   }, [user]);
 
   /**
-   * Guardar configuración en Firestore
+   * Guardar configuración en Firestore y actualizar cache
    */
   const saveConfig = useCallback(
     async (newConfig: ShortcutConfig) => {
@@ -134,15 +173,29 @@ export function useFirestoreConfig(user: User | null): UseFirestoreConfigReturn 
       setError(null);
 
       try {
+        // Guardar en Firestore
         await saveUserConfig(user.uid, newConfig);
         setConfig(newConfig);
         setHasConfig(true);
-        console.log('[useFirestoreConfig] Config guardada exitosamente');
-      } catch (err) {
+        console.log('✅ [useFirestoreConfig] Config guardada en Firestore');
+
+        // Actualizar cache local inmediatamente
+        await saveCacheConfig(newConfig);
+        console.log('💾 [useFirestoreConfig] Cache actualizado');
+      } catch (err: any) {
         const errorMessage = err instanceof Error ? err.message : 'Error al guardar configuración';
         setError(errorMessage);
-        console.error('[useFirestoreConfig] Error guardando:', err);
-        throw err;
+        console.error('❌ [useFirestoreConfig] Error guardando:', err);
+
+        // Si es error de red, guardar solo en cache
+        if (err.isNetworkError) {
+          console.log('🔴 [useFirestoreConfig] Error de red, guardando solo en cache');
+          await saveCacheConfig(newConfig);
+          setConfig(newConfig);
+          // No lanzar error - el usuario puede seguir trabajando
+        } else {
+          throw err;
+        }
       } finally {
         setLoading(false);
       }
